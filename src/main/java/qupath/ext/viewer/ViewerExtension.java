@@ -1,15 +1,16 @@
 package qupath.ext.viewer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javafx.application.ConditionalFeature;
+import javafx.application.Platform;
 import qupath.lib.common.Version;
 import qupath.lib.gui.QuPathGUI;
+import qupath.lib.gui.actions.ActionTools;
 import qupath.lib.gui.extensions.GitHubProject;
 import qupath.lib.gui.extensions.QuPathExtension;
+import qupath.lib.gui.tools.MenuTools;
 
 public class ViewerExtension implements QuPathExtension, GitHubProject {
-	
-	private static final Logger logger = LoggerFactory.getLogger(ViewerExtension.class);
+
 	private static final String EXTENSION_NAME = "Viewer extension";
 	private static final String EXTENSION_DESCRIPTION = "A 3D viewer for QuPath";
 	private static final Version EXTENSION_QUPATH_VERSION = Version.parse("v0.5.1");
@@ -18,11 +19,24 @@ public class ViewerExtension implements QuPathExtension, GitHubProject {
 
 	@Override
 	public void installExtension(QuPathGUI qupath) {
-		if (isInstalled) {
-			logger.debug("{} is already installed", getName());
-			return;
+		if (!isInstalled) {
+			if (!Platform.isSupported(ConditionalFeature.SCENE3D)) {
+				throw new RuntimeException("*** ERROR: common conditional SCENE3D is not supported");
+			}
+
+			MenuTools.addMenuItems(qupath.getMenu("Extensions", false),
+					MenuTools.createMenu("3D viewer",
+							ActionTools.createAction(
+									new ViewerCommand(qupath.getStage()),
+									ViewerCommand.getMenuTitle()
+							)
+					)
+			);
+
+			new ViewerCommand(qupath.getStage()).run();
+
+			isInstalled = true;
 		}
-		isInstalled = true;
 	}
 
 	@Override

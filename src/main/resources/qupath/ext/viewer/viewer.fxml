@@ -6,7 +6,7 @@
 
 <fx:root type="Stage" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
    <scene>
-      <Scene fx:id="scene" fill="#7c7c7c">
+      <Scene fill="#7c7c7c">
           <Group fx:id="root" />
       </Scene>
    </scene>

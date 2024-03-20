@@ -1,27 +1,16 @@
 package qupath.ext.viewer;
 
 import javafx.fxml.FXML;
-import javafx.scene.AmbientLight;
 import javafx.scene.Camera;
 import javafx.scene.Group;
-import javafx.scene.LightBase;
 import javafx.scene.PerspectiveCamera;
-import javafx.scene.Scene;
 import javafx.scene.SubScene;
-import javafx.scene.paint.Color;
-import javafx.scene.paint.PhongMaterial;
-import javafx.scene.shape.Box;
-import javafx.scene.transform.Rotate;
-import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
 
-import java.awt.event.KeyEvent;
 import java.io.IOException;
 
 public class Viewer extends Stage {
 
-    @FXML
-    private Scene scene;
     @FXML
     private Group root;
 
@@ -33,6 +22,9 @@ public class Viewer extends Stage {
     private void initUI(Stage owner) throws IOException {
         UiUtilities.loadFXML(this, Viewer.class.getResource("viewer.fxml"));
 
+        setWidth(800);
+        setHeight(600);
+
         if (owner != null) {
             initOwner(owner);
         }
@@ -40,38 +32,17 @@ public class Viewer extends Stage {
     }
 
     private void populate() {
-        Group group = new Group();
-        SubScene subScene = new SubScene(group, 800, 600);
+        Volume volume = new Volume(getScene(), 100, 100, 5);
+
+        SubScene subScene = new SubScene(volume, getWidth(), getHeight());
+        subScene.widthProperty().bind(getScene().widthProperty());
+        subScene.heightProperty().bind(getScene().heightProperty());
         root.getChildren().add(subScene);
 
-        Box testBox = new Box(1, 1, 1);
-        testBox.setMaterial(new PhongMaterial(Color.RED));
-        group.getChildren().add(testBox);
-
-        group.getChildren().add(new AmbientLight());
-
-        qupath.ext.viewer.Camera camera = new qupath.ext.viewer.Camera();
+        Camera camera = new PerspectiveCamera(true);
+        camera.setNearClip(0.00001);
+        camera.setFarClip(100000);
+        camera.translateZProperty().set(-200);
         subScene.setCamera(camera);
-        subScene.setOnScroll(e -> camera.translate(e.getDeltaY() > 0));
-
-        subScene.setOnKeyPressed(e -> {
-            double step = 100;
-            switch (e.getCode()) {
-                case LEFT:
-                    camera.dragY(-step);
-                    break;
-                case RIGHT:
-                    camera.dragY(step);
-                    break;
-                case UP:
-                    camera.dragX(-step);
-                    break;
-                case DOWN:
-                    camera.dragX(step);
-                    break;
-                default:
-                    break;
-            }
-        });
     }
 }

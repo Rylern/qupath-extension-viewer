@@ -3,16 +3,13 @@ package qupath.ext.viewer;
 import javafx.scene.AmbientLight;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.effect.BlendMode;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Rotate;
 
-public class Volume extends Group {
+public class VoxelVolume extends Group {
 
     private final Rotate xRotate = new Rotate(0, Rotate.X_AXIS);
     private final Rotate yRotate = new Rotate(0, Rotate.Y_AXIS);
@@ -21,21 +18,25 @@ public class Volume extends Group {
     private double anchorAngleX = 0;
     private double anchorAngleY = 0;
 
-    public Volume(Scene scene, int width, int height, int depth) {
+    public VoxelVolume(Scene scene, int width, int height, int depth) {
         getChildren().add(new AmbientLight());
-        setUpVoxels(width, height, depth);
+        setUpVoxels(width, height, depth, 1);
         setUpTransformations(scene);
     }
 
-    private void setUpVoxels(int width, int height, int depth) {
-        Rectangle rectangle = new Rectangle(-width, -height, 2*width, 2*height);
-        rectangle.getTransforms().add(new Rotate(60, Rotate.X_AXIS));
-        rectangle.setFill(Color.BLUE);
-        getChildren().add(rectangle);
-
-        Box box = new Box(width, height, depth);
-        box.setMaterial(new PhongMaterial(new Color(1, 0,0, .1)));
-        getChildren().add(box);
+    private void setUpVoxels(int width, int height, int depth, double scale) {
+        for (int w=0; w<width; w++) {
+            for (int h=0; h<height; h++) {
+                for (int d=0; d<depth; d++) {
+                    Box box = new Box(scale,scale, scale);
+                    box.setMaterial(new PhongMaterial(new Color((double) w /width, (double) h /height, (double) d /depth, 1)));
+                    box.translateXProperty().set(((double) -width /2*scale) + w*scale);
+                    box.translateYProperty().set(((double) -height /2*scale) + h*scale);
+                    box.translateZProperty().set(((double) -depth /2*scale) + d*scale);
+                    getChildren().add(box);
+                }
+            }
+        }
     }
 
     private void setUpTransformations(Scene scene) {

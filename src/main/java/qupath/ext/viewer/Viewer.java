@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Camera;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
+import javafx.scene.SceneAntialiasing;
 import javafx.scene.SubScene;
 import javafx.stage.Stage;
 
@@ -32,7 +33,7 @@ public class Viewer extends Stage {
     }
 
     private void populate() {
-        Volume volume = new Volume(getScene(), 100, 100, 5);
+        Group volume = new Volume(getScene(), 10, 10, 5);
 
         SubScene subScene = new SubScene(volume, getWidth(), getHeight());
         subScene.widthProperty().bind(getScene().widthProperty());
@@ -40,9 +41,9 @@ public class Viewer extends Stage {
         root.getChildren().add(subScene);
 
         Camera camera = new PerspectiveCamera(true);
-        camera.setNearClip(0.00001);
-        camera.setFarClip(100000);
-        camera.translateZProperty().set(-200);
+        camera.setNearClip(1);
+        camera.setFarClip(1000);
+        camera.translateZProperty().set(-50);
         subScene.setCamera(camera);
     }
 }

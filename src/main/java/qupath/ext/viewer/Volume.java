@@ -1,16 +1,17 @@
 package qupath.ext.viewer;
 
+import javafx.geometry.Point3D;
 import javafx.scene.AmbientLight;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.effect.BlendMode;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Rotate;
+
+import java.util.List;
 
 public class Volume extends Group {
 
@@ -23,11 +24,11 @@ public class Volume extends Group {
 
     public Volume(Scene scene, int width, int height, int depth) {
         getChildren().add(new AmbientLight());
-        setUpVoxels(width, height, depth);
+        setUpObjects(width, height, depth);
         setUpTransformations(scene);
     }
 
-    private void setUpVoxels(int width, int height, int depth) {
+    private void setUpObjects(int width, int height, int depth) {
         Rectangle rectangle = new Rectangle(-width, -height, 2*width, 2*height);
         rectangle.getTransforms().add(new Rotate(60, Rotate.X_AXIS));
         rectangle.setFill(Color.BLUE);

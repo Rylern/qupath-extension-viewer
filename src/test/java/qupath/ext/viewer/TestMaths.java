@@ -14,13 +14,13 @@ public class TestMaths {
                 new Point3D(0, 2, 0)
         );
         Maths.Rectangle rectangleB = new Maths.Rectangle(
-                new Point3D(-2, 1, 2),
-                new Point3D(5, 0, 0),
-                new Point3D(0, 0, -5)
+                new Point3D(0.5, -1, 2),
+                new Point3D(0, 0, -5),
+                new Point3D(0,5, 0)
         );
         Maths.Segment expectedSegment = new Maths.Segment(
-                new Point3D(0, 1, 0),
-                new Point3D(1, 1, 0)
+                new Point3D(0.5, 0, 0),
+                new Point3D(0.5, 2, 0)
         );
 
         Maths.Segment segment = Maths.findIntersectionLineBetweenRectangles(rectangleA, rectangleB);

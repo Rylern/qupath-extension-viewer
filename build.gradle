@@ -5,7 +5,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     // Include this plugin to avoid downloading JavaCPP dependencies for all platforms
     id 'org.bytedeco.gradle-javacpp-platform'
-    id 'org.openjfx.javafxplugin' version '0.1.0'
+    alias(libs.plugins.javafx)
 }
 
 ext.moduleName = 'io.github.qupath.extension.viewer'
@@ -25,6 +25,8 @@ dependencies {
     shadow "io.github.qupath:qupath-gui-fx:${qupathVersion}"
 
     shadow libs.slf4j
+    testImplementation libs.junit
+    testImplementation "io.github.qupath:qupath-gui-fx:${qupathVersion}"
 }
 
 /*
@@ -92,6 +94,10 @@ tasks.withType(Javadoc) {
 	if (!strictJavadoc) {
         options.addStringOption('Xdoclint:none', '-quiet')
 	}
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 /*

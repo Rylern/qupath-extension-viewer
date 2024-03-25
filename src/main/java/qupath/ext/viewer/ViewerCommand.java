@@ -20,7 +20,7 @@ public class ViewerCommand implements Runnable {
     public void run() {
         if (viewer == null) {
             try {
-                viewer = new Viewer(owner);
+                viewer = new Viewer(owner, 10,10,5);
             } catch (IOException e) {
                 logger.error("Error when creating the viewer", e);
             }

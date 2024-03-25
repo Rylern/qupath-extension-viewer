@@ -1,4 +1,4 @@
-package qupath.ext.viewer;
+package qupath.ext.viewer.scene;
 
 import javafx.geometry.Point3D;
 import org.junit.jupiter.api.Assertions;
@@ -11,11 +11,11 @@ public class TestMaths {
         Maths.Rectangle rectangleA = new Maths.Rectangle(
                 new Point3D(0, 0, 0),
                 new Point3D(1, 0, 0),
-                new Point3D(0, 2, 0)
+                new Point3D(1, 2, 0)
         );
         Maths.Rectangle rectangleB = new Maths.Rectangle(
                 new Point3D(0.5, -1, 2),
-                new Point3D(0, 0, -5),
+                new Point3D(0, 0, -5),      // not updated with new rectangle constructor
                 new Point3D(0,5, 0)
         );
         Maths.Segment expectedSegment = new Maths.Segment(

@@ -1,12 +1,10 @@
 package qupath.ext.viewer;
 
 import javafx.fxml.FXML;
-import javafx.scene.Camera;
 import javafx.scene.Group;
-import javafx.scene.PerspectiveCamera;
-import javafx.scene.SceneAntialiasing;
-import javafx.scene.SubScene;
+import javafx.scene.control.Slider;
 import javafx.stage.Stage;
+import qupath.ext.viewer.scene.Scene3D;
 
 import java.io.IOException;
 
@@ -14,10 +12,27 @@ public class Viewer extends Stage {
 
     @FXML
     private Group root;
+    @FXML
+    private Slider translationSlider;
+    @FXML
+    private Slider xRotationSlider;
+    @FXML
+    private Slider yRotationSlider;
 
-    public Viewer(Stage owner) throws IOException {
+    public Viewer(Stage owner, int imageWidth, int imageHeight, int imageDepth) throws IOException {
         initUI(owner);
-        populate();
+
+        translationSlider.setMax(Math.max(Math.max(imageWidth, imageHeight), imageDepth));
+        root.getChildren().add(new Scene3D(
+                getScene().widthProperty(),
+                getScene().heightProperty(),
+                imageWidth,
+                imageHeight,
+                imageDepth,
+                translationSlider.valueProperty(),
+                xRotationSlider.valueProperty(),
+                yRotationSlider.valueProperty()
+        ).getSubScene());
     }
 
     private void initUI(Stage owner) throws IOException {
@@ -30,20 +45,5 @@ public class Viewer extends Stage {
             initOwner(owner);
         }
         show();
-    }
-
-    private void populate() {
-        Group volume = new Volume(getScene(), 10, 10, 5);
-
-        SubScene subScene = new SubScene(volume, getWidth(), getHeight());
-        subScene.widthProperty().bind(getScene().widthProperty());
-        subScene.heightProperty().bind(getScene().heightProperty());
-        root.getChildren().add(subScene);
-
-        Camera camera = new PerspectiveCamera(true);
-        camera.setNearClip(1);
-        camera.setFarClip(1000);
-        camera.translateZProperty().set(-50);
-        subScene.setCamera(camera);
     }
 }

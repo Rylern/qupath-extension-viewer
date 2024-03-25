@@ -1,4 +1,4 @@
-package qupath.ext.viewer;
+package qupath.ext.viewer.scene;
 
 
 import javafx.geometry.Point3D;
@@ -6,7 +6,9 @@ import javafx.geometry.Point3D;
 import java.util.List;
 import java.util.Objects;
 
-public class Maths {
+class Maths {
+
+    private static final double EPSILON = 0.00001;
 
     public static Segment findIntersectionLineBetweenRectangles(Rectangle rectangleA, Rectangle rectangleB) {
         Plane planeA = getPlane(rectangleA);
@@ -76,7 +78,7 @@ public class Maths {
         Point3D Pa = P1.add(P2.subtract(P1).multiply(mua));
         Point3D Pb = P3.add(P4.subtract(P3).multiply(mub));
 
-        if (Pa.equals(Pb) && segment.containPoint(Pa)) {
+        if (Pa.distance(Pb) < EPSILON && segment.containPoint(Pa)) {
             return Pa;
         } else {
             return null;
@@ -95,10 +97,17 @@ public class Maths {
         private final Point3D u;
         private final Point3D v;
 
-        public Rectangle(Point3D origin, Point3D u, Point3D v) {
-            this.origin = origin;
-            this.u = u;
-            this.v = v;
+        /**
+         * params in order
+         *
+         * @param p0
+         * @param p1
+         * @param p2
+         */
+        public Rectangle(Point3D p0, Point3D p1, Point3D p2) {
+            this.origin = p0;
+            this.u = p1.subtract(p0);
+            this.v = p2.subtract(p1);
         }
 
         public List<Segment> getSegments() {
@@ -170,7 +179,16 @@ public class Maths {
             double AB = a.distance(b);
             double AP = a.distance(point);
             double PB = point.distance(b);
-            return AB == AP + PB;
+
+            return Math.abs(AP + PB - AB) < EPSILON;    // equivalent to AP + PB = AB
+        }
+
+        public Point3D getA() {
+            return a;
+        }
+
+        public Point3D getB() {
+            return b;
         }
 
         @Override

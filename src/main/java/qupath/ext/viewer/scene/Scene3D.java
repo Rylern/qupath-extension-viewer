@@ -10,6 +10,7 @@ import javafx.scene.SubScene;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
+import javafx.scene.shape.Mesh;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Rotate;
@@ -38,8 +39,8 @@ public class Scene3D {
         subScene.heightProperty().bind(sceneHeight);
 
         root.getChildren().add(new AmbientLight());
-        setUpObjects(imageWidth, imageHeight, imageDepth, translationSliderValue, xRotationSliderValue, yRotationSliderValue);
         root.getTransforms().addAll(new SceneTransformations(subScene).getTransforms());
+        setUpObjects(imageWidth, imageHeight, imageDepth, translationSliderValue, xRotationSliderValue, yRotationSliderValue);
         setUpCamera();
     }
 
@@ -55,18 +56,28 @@ public class Scene3D {
             ObservableDoubleValue xRotationSliderValue,
             ObservableDoubleValue yRotationSliderValue
     ) {
-        Rectangle slicer = setUpSlicer(width, height, depth, translationSliderValue, xRotationSliderValue, yRotationSliderValue);
+        Rectangle slicer = createSlicer(width, height, depth, translationSliderValue, xRotationSliderValue, yRotationSliderValue);
+        root.getChildren().add(slicer);
 
         Box box = new Box(width, height, depth);
         box.setMaterial(new PhongMaterial(new Color(1, 0,0, .1)));
         root.getChildren().add(box);
 
-        MeshView meshView = new MeshView(IntersectionCalculator.getIntersectionMeshBetweenBoxAndRectangle(box, slicer));
-        meshView.setMaterial(new PhongMaterial(Color.GREEN));
-        slicer.getTransforms().addListener((ListChangeListener<? super Transform>) change ->
-                meshView.setMesh(IntersectionCalculator.getIntersectionMeshBetweenBoxAndRectangle(box, slicer))
-        );
-        root.getChildren().add(meshView);
+        Group meshGroup = new Group();
+        root.getChildren().add(meshGroup);
+        for (Mesh mesh: VolumeCalculator.getMeshesOfBoxInFrontOfRectangle(box, slicer)) {
+            MeshView meshView = new MeshView(mesh);
+            meshView.setMaterial(new PhongMaterial(Color.GREEN));
+            meshGroup.getChildren().add(meshView);
+        }
+        slicer.getTransforms().addListener((ListChangeListener<? super Transform>) change -> {
+            meshGroup.getChildren().clear();
+            for (Mesh mesh: VolumeCalculator.getMeshesOfBoxInFrontOfRectangle(box, slicer)) {
+                MeshView meshView = new MeshView(mesh);
+                meshView.setMaterial(new PhongMaterial(Color.GREEN));
+                meshGroup.getChildren().add(meshView);
+            }
+        });
     }
 
     private void setUpCamera() {
@@ -77,7 +88,7 @@ public class Scene3D {
         subScene.setCamera(camera);
     }
 
-    private Rectangle setUpSlicer(
+    private static Rectangle createSlicer(
             int width,
             int height,
             int depth,
@@ -93,12 +104,10 @@ public class Scene3D {
         xRotationSliderValue.addListener((p, o, n) -> updateSlicerTransforms(slicer, translationSliderValue, xRotationSliderValue, yRotationSliderValue, depth));
         yRotationSliderValue.addListener((p, o, n) -> updateSlicerTransforms(slicer, translationSliderValue, xRotationSliderValue, yRotationSliderValue, depth));
 
-        root.getChildren().add(slicer);
-
         return slicer;
     }
 
-    private void updateSlicerTransforms(
+    private static void updateSlicerTransforms(
             Rectangle slicer,
             ObservableDoubleValue translationSliderValue,
             ObservableDoubleValue xRotationSliderValue,

@@ -15,10 +15,13 @@ public class TestIntersectionCalculator {
         Rectangle rectangle = new Rectangle(-width, -height, 2*width, 2*height);
         //rectangle.getTransforms().add(new Rotate(60, Rotate.X_AXIS));
 
+        /*
         TriangleMesh mesh = (TriangleMesh) IntersectionCalculator.getIntersectionMeshBetweenBoxAndRectangle(box, rectangle);
 
         System.err.println(mesh.getPoints());
         System.err.println(mesh.getTexCoords());
         System.err.println(mesh.getFaces());
+
+         */
     }
 }

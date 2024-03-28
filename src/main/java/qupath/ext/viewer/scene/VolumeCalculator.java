@@ -6,7 +6,6 @@ import javafx.scene.shape.Mesh;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.TriangleMesh;
 import javafx.scene.transform.Transform;
-import qupath.lib.scripting.QP;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,16 +14,35 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-class IntersectionCalculator {
+class VolumeCalculator {
 
-    public static Mesh getIntersectionMeshBetweenBoxAndRectangle(Box box, Rectangle rectangle) {
-        List<Point3D> points = getIntersectionPointsBetweenBoxAndRectangle(box, rectangle);
+    public static List<Mesh> getMeshesOfBoxInFrontOfRectangle(Box box, Rectangle rectangle) {
+        return Stream.concat(
+                Stream.of(getMeshOfPolygon(getIntersectionPointsBetweenBoxAndRectangle(box, rectangle))),
+                getRectanglesOfBox(box).stream()
+                        .map(r -> getMeshOfPolygon(
+                                sortPoints(getPartOfRectangleInFrontOfOtherRectangle(r, getRectangle(rectangle)))
+                        ))
+        ).toList();
+    }
 
+    private static List<Point3D> getIntersectionPointsBetweenBoxAndRectangle(Box box, Rectangle rectangle) {
+        Maths.Rectangle rect = getRectangle(rectangle);
+
+        return sortPoints(getRectanglesOfBox(box).stream()
+                .map(r -> Maths.findIntersectionLineBetweenRectangles(r, rect))
+                .filter(Objects::nonNull)
+                .flatMap(s -> Stream.of(s.getA(), s.getB()))
+                .distinct()
+                .toList());
+    }
+
+    private static Mesh getMeshOfPolygon(List<Point3D> points) {
         float[] vertices;
         float[] textureCoordinates;
         int[] faceIndices;
 
-        if (points.isEmpty()) {
+        if (points.size() < 3) {
             vertices = new float[0];
             textureCoordinates = new float[0];
             faceIndices = new int[0];
@@ -61,17 +79,6 @@ class IntersectionCalculator {
         return mesh;
     }
 
-    private static List<Point3D> getIntersectionPointsBetweenBoxAndRectangle(Box box, Rectangle rectangle) {
-        Maths.Rectangle rect = getRectangle(rectangle);
-
-        return sortPoints(getRectanglesOfBox(box).stream()
-                .map(r -> Maths.findIntersectionLineBetweenRectangles(r, rect))
-                .filter(Objects::nonNull)
-                .flatMap(s -> Stream.of(s.getA(), s.getB()))
-                .distinct()
-                .toList());
-    }
-
     private static List<Point3D> sortPoints(List<Point3D> points) {
         //https://stackoverflow.com/questions/20387282/compute-the-cross-section-of-a-cube?fbclid=IwAR1a5zUPQOaICBawb7Wy1aymAGvoX97wELTFij1kYfC5Z-zvNph9ftWdr4s
 
@@ -86,6 +93,43 @@ class IntersectionCalculator {
                     .sorted(Comparator.comparingDouble(p -> signedAngle(ZA, p.subtract(Z), n)))
                     .toList();
         }
+    }
+
+    private static Maths.Rectangle getRectangle(Rectangle rectangle) {
+        Point3D A = new Point3D(rectangle.getX(), rectangle.getY(), 0);
+        Point3D B = new Point3D(rectangle.getX() + rectangle.getWidth(), rectangle.getY(), 0);
+        Point3D C = new Point3D(rectangle.getX() + rectangle.getWidth(), rectangle.getY() + rectangle.getHeight(), 0);
+
+        List<Transform> transforms = new ArrayList<>(rectangle.getTransforms());
+        Collections.reverse(transforms);
+
+        for (Transform transform: transforms) {
+            A = transform.transform(A);
+            B = transform.transform(B);
+            C = transform.transform(C);
+        }
+
+        return new Maths.Rectangle(A, B, C);
+    }
+
+    private static List<Point3D> getPartOfRectangleInFrontOfOtherRectangle(Maths.Rectangle rectangleToCut, Maths.Rectangle rectangle) {
+        List<Point3D> pointsOfRectangleInFrontOfPlane = getPointsOfRectangleInFrontOfPlane(rectangleToCut, rectangle.getPlane());
+        Maths.Segment segment = Maths.findIntersectionLineBetweenRectangles(rectangleToCut, rectangle);
+
+        if (segment == null) {
+            return pointsOfRectangleInFrontOfPlane;
+        } else {
+            return Stream.concat(
+                    pointsOfRectangleInFrontOfPlane.stream(),
+                    Stream.of(segment.getA(), segment.getB())
+            ).toList();
+        }
+    }
+
+    private static List<Point3D> getPointsOfRectangleInFrontOfPlane(Maths.Rectangle rectangle, Maths.Plane plane) {
+        return rectangle.getPoints().stream()
+                .filter(p -> isPointInFrontOfPlane(p, plane))
+                .toList();
     }
 
     private static List<Maths.Rectangle> getRectanglesOfBox(Box box) {
@@ -149,34 +193,20 @@ class IntersectionCalculator {
         );
     }
 
-    private static Maths.Rectangle getRectangle(Rectangle rectangle) {
-        Point3D A = new Point3D(rectangle.getX(), rectangle.getY(), 0);
-        Point3D B = new Point3D(rectangle.getX() + rectangle.getWidth(), rectangle.getY(), 0);
-        Point3D C = new Point3D(rectangle.getX() + rectangle.getWidth(), rectangle.getY() + rectangle.getHeight(), 0);
+    private static boolean isPointInFrontOfPlane(Point3D point, Maths.Plane plane) {
+        return plane.distanceOfPoint(point) > 0;
+    }
 
-        List<Transform> transforms = new ArrayList<>(rectangle.getTransforms());
-        Collections.reverse(transforms);
-
-        for (Transform transform: transforms) {
-            A = transform.transform(A);
-            B = transform.transform(B);
-            C = transform.transform(C);
+    private static Point3D centroid(List<Point3D> points) {
+        Point3D centroid = new Point3D(0, 0, 0);
+        for (Point3D p: points) {
+            centroid = centroid.add(p);
         }
-
-        return new Maths.Rectangle(A, B, C);
+        centroid = centroid.multiply((double) 1 / points.size());
+        return centroid;
     }
 
     private static Point3D normal(List<Point3D> points, Point3D centroid) {
-        /*
-        //https://stackoverflow.com/questions/32274127/how-to-efficiently-determine-the-normal-to-a-polygon-in-3d-space
-        Point3D sum = new Point3D(0, 0, 0);
-
-        for (int i=0; i<points.size(); i++) {
-            sum.add(points.get(i).subtract(centroid).crossProduct(points.get(i == points.size()-1 ? 0 : i+1).subtract(centroid)));
-        }
-        return sum.normalize();
-
-         */
         //https://stackoverflow.com/a/54998309
         Point3D largestCrossProduct = new Point3D(0,0, 0);
         double largestCrossProductMagnitude = 0;
@@ -193,28 +223,10 @@ class IntersectionCalculator {
         }
 
         return largestCrossProduct;
-
     }
 
     private static double signedAngle(Point3D from, Point3D to, Point3D axis) {
         return from.angle(to) * sign(axis.dotProduct(from.crossProduct(to)));
-    }
-
-    private static Point3D centroid(List<Point3D> points) {
-        Point3D centroid = new Point3D(0, 0, 0);
-        for (Point3D p: points) {
-            centroid = centroid.add(p);
-        }
-        centroid = centroid.multiply((double) 1 / points.size());
-        return centroid;
-
-        /*
-        return points.stream()
-                .skip(1) // Skip the first point since it's already assigned
-                .reduce(points.get(0), Point3D::add)
-                .multiply((double) 1 / points.size());
-
-         */
     }
 
     private static int sign(double a) {

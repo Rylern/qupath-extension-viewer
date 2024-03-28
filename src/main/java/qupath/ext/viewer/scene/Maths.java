@@ -11,8 +11,8 @@ class Maths {
     private static final double EPSILON = 0.00001;
 
     public static Segment findIntersectionLineBetweenRectangles(Rectangle rectangleA, Rectangle rectangleB) {
-        Plane planeA = getPlane(rectangleA);
-        Plane planeB = getPlane(rectangleB);
+        Plane planeA = rectangleA.getPlane();
+        Plane planeB = rectangleB.getPlane();
 
         Line intersectionLineBetweenPlanes = findIntersectionLineBetweenPlanes(planeA, planeB);
 
@@ -27,11 +27,14 @@ class Maths {
         }
     }
 
+    public static Point3D findIntersectionPointBetweenLineAndPlane(Line line, Plane plane) {
+        // https://stackoverflow.com/a/52711312
+        if (plane.normal.dotProduct(line.direction.normalize()) == 0) {
+            return null;
+        }
 
-    private static Plane getPlane(Rectangle rectangle) {
-        Point3D normalA = rectangle.u.crossProduct(rectangle.v).normalize();
-        double d = normalA.getX() * rectangle.origin.getX() + normalA.getY() * rectangle.origin.getY() + normalA.getZ() * rectangle.origin.getZ();
-        return new Plane(normalA, d);
+        double t = (plane.normal.dotProduct(plane.getPointOnPlane()) - plane.normal.dotProduct(line.point)) / plane.normal.dotProduct(line.direction.normalize());
+        return line.point.add(line.direction.normalize().multiply(t));
     }
 
     private static Line findIntersectionLineBetweenPlanes(Plane planeA, Plane planeB) {
@@ -119,6 +122,21 @@ class Maths {
             );
         }
 
+        public List<Point3D> getPoints() {
+            return List.of(
+                    origin,
+                    origin.add(u),
+                    origin.add(u).add(v),
+                    origin.add(v)
+            );
+        }
+
+        public Plane getPlane() {
+            Point3D normalA = u.crossProduct(v).normalize();
+            double d = normalA.getX() * origin.getX() + normalA.getY() * origin.getY() + normalA.getZ() * origin.getZ();
+            return new Plane(normalA, d);
+        }
+
         @Override
         public String toString() {
             return "origin: " + origin.toString() + " u: " + u.toString() + " v: " + v.toString();
@@ -144,6 +162,20 @@ class Maths {
             this.d = d;
         }
 
+        public Point3D getNormal() {
+            return normal;
+        }
+
+        public Point3D getPointOnPlane() {
+            //https://stackoverflow.com/a/13490275
+            return normal.multiply(d / (Math.pow(normal.getX(), 2) + Math.pow(normal.getY(), 2) + Math.pow(normal.getZ(), 2)));
+        }
+
+        public double distanceOfPoint(Point3D point) {
+            //https://stackoverflow.com/a/9605695
+            return point.subtract(getPointOnPlane()).dotProduct(normal);
+        }
+
         @Override
         public String toString() {
             return "normal: " + normal.toString() + " d: " + d;
@@ -154,9 +186,9 @@ class Maths {
         private final Point3D point;
         private final Point3D direction;
 
-        public Line(Point3D point, Point3D normal) {
+        public Line(Point3D point, Point3D direction) {
             this.point = point;
-            this.direction = normal;
+            this.direction = direction;
         }
 
         @Override

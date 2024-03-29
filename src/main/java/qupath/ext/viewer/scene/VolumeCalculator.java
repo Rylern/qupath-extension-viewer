@@ -17,56 +17,61 @@ import java.util.stream.Stream;
 class VolumeCalculator {
 
     public static List<Mesh> getMeshesOfBoxInFrontOfRectangle(Box box, Rectangle rectangle) {
-        return Stream.concat(
-                Stream.of(getMeshOfPolygon(getIntersectionPointsBetweenBoxAndRectangle(box, rectangle))),
-                getRectanglesOfBox(box).stream()
-                        .map(r -> getMeshOfPolygon(
-                                sortPoints(getPartOfRectangleInFrontOfOtherRectangle(r, getRectangle(rectangle)))
-                        ))
+        List<List<Point3D>> pointsOfVolume = Stream.concat(
+                getRectanglesOfBox(box).stream().map(r -> getPartOfRectangleInFrontOfOtherRectangle(r, getRectangle(rectangle))),
+                Stream.of(getIntersectionPointsBetweenBoxAndRectangle(box, rectangle))
         ).toList();
+
+        Point3D centroidOfVolume = centroid(pointsOfVolume.stream().flatMap(List::stream).toList());
+
+        return pointsOfVolume.stream()
+                .map(points -> getMeshOfPolygon(points, centroidOfVolume))
+                .toList();
     }
 
     private static List<Point3D> getIntersectionPointsBetweenBoxAndRectangle(Box box, Rectangle rectangle) {
         Maths.Rectangle rect = getRectangle(rectangle);
 
-        return sortPoints(getRectanglesOfBox(box).stream()
+        return getRectanglesOfBox(box).stream()
                 .map(r -> Maths.findIntersectionLineBetweenRectangles(r, rect))
                 .filter(Objects::nonNull)
                 .flatMap(s -> Stream.of(s.getA(), s.getB()))
                 .distinct()
-                .toList());
+                .toList();
     }
 
-    private static Mesh getMeshOfPolygon(List<Point3D> points) {
+    private static Mesh getMeshOfPolygon(List<Point3D> points, Point3D volumeCentroid) {
+        List<Point3D> pointSorted = sortPoints(points, volumeCentroid);
+
         float[] vertices;
         float[] textureCoordinates;
         int[] faceIndices;
 
-        if (points.size() < 3) {
+        if (pointSorted.size() < 3) {
             vertices = new float[0];
             textureCoordinates = new float[0];
             faceIndices = new int[0];
         } else {
-            Point3D centroid = centroid(points);
+            Point3D centroid = centroid(pointSorted);
 
-            vertices = new float[(1 + points.size()) * 3];
+            vertices = new float[(1 + pointSorted.size()) * 3];
             textureCoordinates = new float[] {0, 0};
-            faceIndices = new int[points.size() * 6];
+            faceIndices = new int[pointSorted.size() * 6];
 
             vertices[0] = (float) centroid.getX();
             vertices[1] = (float) centroid.getY();
             vertices[2] = (float) centroid.getZ();
 
-            for (int i=0; i<points.size(); i++) {
-                vertices[(i+1) * 3] = (float) points.get(i).getX();
-                vertices[(i+1) * 3 + 1] = (float) points.get(i).getY();
-                vertices[(i+1) * 3 + 2] = (float) points.get(i).getZ();
+            for (int i=0; i<pointSorted.size(); i++) {
+                vertices[(i+1) * 3] = (float) pointSorted.get(i).getX();
+                vertices[(i+1) * 3 + 1] = (float) pointSorted.get(i).getY();
+                vertices[(i+1) * 3 + 2] = (float) pointSorted.get(i).getZ();
 
                 faceIndices[i * 6] = 0;
                 faceIndices[i * 6 + 1] = 0;
                 faceIndices[i * 6 + 2] = i+1;
                 faceIndices[i * 6 + 3] = 0;
-                faceIndices[i * 6 + 4] = i == points.size()-1 ? 1 : i+2;
+                faceIndices[i * 6 + 4] = i == pointSorted.size()-1 ? 1 : i+2;
                 faceIndices[i * 6 + 5] = 0;
             }
         }
@@ -79,14 +84,13 @@ class VolumeCalculator {
         return mesh;
     }
 
-    private static List<Point3D> sortPoints(List<Point3D> points) {
+    private static List<Point3D> sortPoints(List<Point3D> points, Point3D volumeCentroid) {
         //https://stackoverflow.com/questions/20387282/compute-the-cross-section-of-a-cube?fbclid=IwAR1a5zUPQOaICBawb7Wy1aymAGvoX97wELTFij1kYfC5Z-zvNph9ftWdr4s
-
         if (points.size() < 3) {
             return List.of();
         } else {
             Point3D Z = centroid(points);
-            Point3D n = normal(points, Z);
+            Point3D n = normal(points, Z, Z.subtract(volumeCentroid));
             Point3D ZA = points.get(0).subtract(Z);
 
             return points.stream()
@@ -206,7 +210,7 @@ class VolumeCalculator {
         return centroid;
     }
 
-    private static Point3D normal(List<Point3D> points, Point3D centroid) {
+    private static Point3D normal(List<Point3D> points, Point3D centroid, Point3D directionOfNormal) {
         //https://stackoverflow.com/a/54998309
         Point3D largestCrossProduct = new Point3D(0,0, 0);
         double largestCrossProductMagnitude = 0;
@@ -222,7 +226,11 @@ class VolumeCalculator {
             }
         }
 
-        return largestCrossProduct;
+        if (largestCrossProduct.dotProduct(directionOfNormal) >= 0) {
+            return largestCrossProduct;
+        } else {
+            return largestCrossProduct.multiply(-1);
+        }
     }
 
     private static double signedAngle(Point3D from, Point3D to, Point3D axis) {

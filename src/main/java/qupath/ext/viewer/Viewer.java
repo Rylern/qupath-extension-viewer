@@ -1,8 +1,8 @@
 package qupath.ext.viewer;
 
 import javafx.fxml.FXML;
-import javafx.scene.Group;
 import javafx.scene.control.Slider;
+import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import qupath.ext.viewer.scene.Scene3D;
 
@@ -11,7 +11,7 @@ import java.io.IOException;
 public class Viewer extends Stage {
 
     @FXML
-    private Group root;
+    private BorderPane root;
     @FXML
     private Slider translationSlider;
     @FXML
@@ -23,7 +23,7 @@ public class Viewer extends Stage {
         initUI(owner);
 
         translationSlider.setMax(Math.max(Math.max(imageWidth, imageHeight), imageDepth));
-        root.getChildren().add(new Scene3D(
+        root.setCenter(new Scene3D(
                 getScene().widthProperty(),
                 getScene().heightProperty(),
                 imageWidth,

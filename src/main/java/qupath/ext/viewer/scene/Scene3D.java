@@ -1,7 +1,6 @@
 package qupath.ext.viewer.scene;
 
 import javafx.beans.value.ObservableDoubleValue;
-import javafx.collections.ListChangeListener;
 import javafx.scene.AmbientLight;
 import javafx.scene.Camera;
 import javafx.scene.Group;
@@ -10,11 +9,8 @@ import javafx.scene.SubScene;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
-import javafx.scene.shape.Mesh;
-import javafx.scene.shape.MeshView;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Rotate;
-import javafx.scene.transform.Transform;
 import javafx.scene.transform.Translate;
 
 public class Scene3D {
@@ -35,6 +31,7 @@ public class Scene3D {
         root = new Group();
 
         subScene = new SubScene(root, sceneWidth.get(), sceneHeight.get());
+        subScene.setFill(new Color(0.5, 0.5, 0.5, 1));
         subScene.widthProperty().bind(sceneWidth);
         subScene.heightProperty().bind(sceneHeight);
 
@@ -61,23 +58,9 @@ public class Scene3D {
 
         Box box = new Box(width, height, depth);
         box.setMaterial(new PhongMaterial(new Color(1, 0,0, .1)));
-        root.getChildren().add(box);
+        //root.getChildren().add(box);
 
-        Group meshGroup = new Group();
-        root.getChildren().add(meshGroup);
-        for (Mesh mesh: VolumeCalculator.getMeshesOfBoxInFrontOfRectangle(box, slicer)) {
-            MeshView meshView = new MeshView(mesh);
-            meshView.setMaterial(new PhongMaterial(Color.GREEN));
-            meshGroup.getChildren().add(meshView);
-        }
-        slicer.getTransforms().addListener((ListChangeListener<? super Transform>) change -> {
-            meshGroup.getChildren().clear();
-            for (Mesh mesh: VolumeCalculator.getMeshesOfBoxInFrontOfRectangle(box, slicer)) {
-                MeshView meshView = new MeshView(mesh);
-                meshView.setMaterial(new PhongMaterial(Color.GREEN));
-                meshGroup.getChildren().add(meshView);
-            }
-        });
+        root.getChildren().add(new Volume(box, slicer));
     }
 
     private void setUpCamera() {

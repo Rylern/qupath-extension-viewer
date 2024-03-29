@@ -19,6 +19,7 @@ class SceneTransformations {
     private double anchorAngleY = 0;
 
     public SceneTransformations(SubScene subScene) {
+        subScene.setPickOnBounds(true);
         subScene.setOnMousePressed(e -> onMousePressed(e.getSceneX(), e.getSceneY()));
         subScene.setOnMouseDragged(e -> onMouseDragged(e.getSceneX(), e.getSceneY()));
         subScene.addEventHandler(ScrollEvent.SCROLL, e -> onScroll(e.getDeltaY()));

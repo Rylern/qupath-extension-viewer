@@ -18,11 +18,11 @@ class SceneTransformations {
     private double anchorAngleX = 0;
     private double anchorAngleY = 0;
 
-    public SceneTransformations(SubScene subScene) {
+    public SceneTransformations(SubScene subScene, int scrollSpeed) {
         subScene.setPickOnBounds(true);
         subScene.setOnMousePressed(e -> onMousePressed(e.getSceneX(), e.getSceneY()));
         subScene.setOnMouseDragged(e -> onMouseDragged(e.getSceneX(), e.getSceneY()));
-        subScene.addEventHandler(ScrollEvent.SCROLL, e -> onScroll(e.getDeltaY()));
+        subScene.addEventHandler(ScrollEvent.SCROLL, e -> onScroll(e.getDeltaY(), scrollSpeed));
     }
 
     public List<Transform> getTransforms() {
@@ -41,7 +41,7 @@ class SceneTransformations {
         yRotate.angleProperty().set(anchorAngleY + (anchorX - xPosition));
     }
 
-    private void onScroll(double scroll) {
-        zTranslate.setZ(zTranslate.getZ() - scroll / 10);
+    private void onScroll(double scroll, int scrollSpeed) {
+        zTranslate.setZ(zTranslate.getZ() - scroll * scrollSpeed);
     }
 }

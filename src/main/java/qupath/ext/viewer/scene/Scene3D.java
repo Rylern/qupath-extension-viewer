@@ -10,8 +10,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.transform.Rotate;
-import javafx.scene.transform.Translate;
+import qupath.lib.images.servers.ImageServer;
+
+import java.awt.image.BufferedImage;
 
 public class Scene3D {
 
@@ -21,9 +22,7 @@ public class Scene3D {
     public Scene3D(
             ObservableDoubleValue sceneWidth,
             ObservableDoubleValue sceneHeight,
-            int imageWidth,
-            int imageHeight,
-            int imageDepth,
+            ImageServer<BufferedImage> imageServer,
             ObservableDoubleValue translationSliderValue,
             ObservableDoubleValue xRotationSliderValue,
             ObservableDoubleValue yRotationSliderValue
@@ -36,9 +35,24 @@ public class Scene3D {
         subScene.heightProperty().bind(sceneHeight);
 
         root.getChildren().add(new AmbientLight());
-        root.getTransforms().addAll(new SceneTransformations(subScene).getTransforms());
-        setUpObjects(imageWidth, imageHeight, imageDepth, translationSliderValue, xRotationSliderValue, yRotationSliderValue);
-        setUpCamera();
+        root.getTransforms().addAll(new SceneTransformations(subScene, 10).getTransforms());
+
+        root.getChildren().add(new Slicer(
+                imageServer.getWidth(),
+                imageServer.getHeight(),
+                imageServer.nZSlices(),
+                translationSliderValue,
+                xRotationSliderValue,
+                yRotationSliderValue
+        ));
+
+        setUpObjects(
+                imageServer,
+                translationSliderValue,
+                xRotationSliderValue,
+                yRotationSliderValue
+        );
+        setUpCamera(2 * Math.max(imageServer.getWidth(), imageServer.getHeight()));
     }
 
     public SubScene getSubScene() {
@@ -46,61 +60,33 @@ public class Scene3D {
     }
 
     private void setUpObjects(
-            int width,
-            int height,
-            int depth,
+            ImageServer<BufferedImage> imageServer,
             ObservableDoubleValue translationSliderValue,
             ObservableDoubleValue xRotationSliderValue,
             ObservableDoubleValue yRotationSliderValue
     ) {
-        Rectangle slicer = createSlicer(width, height, depth, translationSliderValue, xRotationSliderValue, yRotationSliderValue);
+        Rectangle slicer = new Slicer(
+                imageServer.getWidth(),
+                imageServer.getHeight(),
+                imageServer.nZSlices(),
+                translationSliderValue,
+                xRotationSliderValue,
+                yRotationSliderValue
+        );
         root.getChildren().add(slicer);
 
-        Box box = new Box(width, height, depth);
+        Box box = new Box(imageServer.getWidth(), imageServer.getHeight(), imageServer.nZSlices());
         box.setMaterial(new PhongMaterial(new Color(1, 0,0, .1)));
         //root.getChildren().add(box);
 
-        root.getChildren().add(new Volume(box, slicer));
+        root.getChildren().add(new Volume(box, slicer, imageServer));
     }
 
-    private void setUpCamera() {
+    private void setUpCamera(int distanceFromOrigin) {
         Camera camera = new PerspectiveCamera(true);
         camera.setNearClip(1);
-        camera.setFarClip(1000);
-        camera.translateZProperty().set(-50);
+        camera.setFarClip(10 * distanceFromOrigin);
+        camera.translateZProperty().set(-distanceFromOrigin);
         subScene.setCamera(camera);
-    }
-
-    private static Rectangle createSlicer(
-            int width,
-            int height,
-            int depth,
-            ObservableDoubleValue translationSliderValue,
-            ObservableDoubleValue xRotationSliderValue,
-            ObservableDoubleValue yRotationSliderValue
-    ) {
-        Rectangle slicer = new Rectangle(-width, -height, 2*width, 2*height);
-        slicer.setFill(Color.BLUE);
-
-        updateSlicerTransforms(slicer, translationSliderValue, xRotationSliderValue, yRotationSliderValue, depth);
-        translationSliderValue.addListener((p, o, n) -> updateSlicerTransforms(slicer, translationSliderValue, xRotationSliderValue, yRotationSliderValue, depth));
-        xRotationSliderValue.addListener((p, o, n) -> updateSlicerTransforms(slicer, translationSliderValue, xRotationSliderValue, yRotationSliderValue, depth));
-        yRotationSliderValue.addListener((p, o, n) -> updateSlicerTransforms(slicer, translationSliderValue, xRotationSliderValue, yRotationSliderValue, depth));
-
-        return slicer;
-    }
-
-    private static void updateSlicerTransforms(
-            Rectangle slicer,
-            ObservableDoubleValue translationSliderValue,
-            ObservableDoubleValue xRotationSliderValue,
-            ObservableDoubleValue yRotationSliderValue,
-            double depth
-    ) {
-        slicer.getTransforms().setAll(
-                new Rotate(yRotationSliderValue.get(), Rotate.Y_AXIS),
-                new Rotate(xRotationSliderValue.get(), Rotate.X_AXIS),
-                new Translate(0, 0, translationSliderValue.get() - depth/2)
-        );
     }
 }

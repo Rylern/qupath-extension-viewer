@@ -21,7 +21,7 @@ public class ViewerExtension implements QuPathExtension, GitHubProject {
 	public void installExtension(QuPathGUI qupath) {
 		if (!isInstalled) {
 			if (!Platform.isSupported(ConditionalFeature.SCENE3D)) {
-				throw new RuntimeException("*** ERROR: common conditional SCENE3D is not supported");
+				throw new RuntimeException("3D is not available on this machine");
 			}
 
 			MenuTools.addMenuItems(qupath.getMenu("Extensions", false),

@@ -5,7 +5,9 @@ import javafx.scene.control.Slider;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import qupath.ext.viewer.scene.Scene3D;
+import qupath.lib.images.servers.ImageServer;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 public class Viewer extends Stage {
@@ -19,16 +21,14 @@ public class Viewer extends Stage {
     @FXML
     private Slider yRotationSlider;
 
-    public Viewer(Stage owner, int imageWidth, int imageHeight, int imageDepth) throws IOException {
+    public Viewer(Stage owner, ImageServer<BufferedImage> imageServer) throws IOException {
         initUI(owner);
 
-        translationSlider.setMax(Math.max(Math.max(imageWidth, imageHeight), imageDepth));
+        translationSlider.setMax(Math.max(Math.max(imageServer.getWidth(), imageServer.getHeight()), imageServer.nZSlices()));
         root.setCenter(new Scene3D(
                 getScene().widthProperty(),
                 getScene().heightProperty(),
-                imageWidth,
-                imageHeight,
-                imageDepth,
+                imageServer,
                 translationSlider.valueProperty(),
                 xRotationSlider.valueProperty(),
                 yRotationSlider.valueProperty()

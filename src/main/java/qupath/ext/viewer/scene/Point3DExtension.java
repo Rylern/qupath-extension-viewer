@@ -3,6 +3,7 @@ package qupath.ext.viewer.scene;
 import javafx.geometry.Point3D;
 
 import java.util.List;
+import java.util.function.Function;
 
 public class Point3DExtension {
 
@@ -13,6 +14,14 @@ public class Point3DExtension {
         }
         centroid = centroid.multiply((double) 1 / points.size());
         return centroid;
+    }
+
+    public static double min(List<Point3D> points, Function<Point3D, Double> pointToCoordinate) {
+        return points.stream().mapToDouble(pointToCoordinate::apply).min().orElseThrow();
+    }
+
+    public static double max(List<Point3D> points, Function<Point3D, Double> pointToCoordinate) {
+        return points.stream().mapToDouble(pointToCoordinate::apply).max().orElseThrow();
     }
 
     public static Point3D minXY(List<Point3D> points) {

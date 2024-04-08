@@ -75,11 +75,7 @@ public class Scene3D {
         );
         root.getChildren().add(slicer);
 
-        Box box = new Box(imageServer.getWidth(), imageServer.getHeight(), imageServer.nZSlices());
-        box.setMaterial(new PhongMaterial(new Color(1, 0,0, .1)));
-        //root.getChildren().add(box);
-
-        root.getChildren().add(new Volume(box, slicer, imageServer));
+        root.getChildren().add(new Volume(slicer, imageServer));
     }
 
     private void setUpCamera(int distanceFromOrigin) {

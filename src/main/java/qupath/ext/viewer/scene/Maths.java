@@ -2,8 +2,6 @@ package qupath.ext.viewer.scene;
 
 
 import javafx.geometry.Point3D;
-import javafx.scene.shape.Box;
-import javafx.scene.transform.Transform;
 
 import java.util.List;
 import java.util.Objects;
@@ -139,26 +137,15 @@ class Maths {
             return new Plane(normalA, d);
         }
 
-        public static List<Maths.Rectangle> getRectanglesOfBox(Box box) {
-            Point3D upperLeftClose = new Point3D(-box.getWidth() / 2, -box.getHeight() / 2, -box.getDepth() / 2);
-            Point3D upperRightClose = new Point3D(box.getWidth() / 2, -box.getHeight() / 2, -box.getDepth() / 2);
-            Point3D lowerRightClose = new Point3D(box.getWidth() / 2, box.getHeight() / 2, -box.getDepth() / 2);
-            Point3D lowerLeftClose = new Point3D(-box.getWidth() / 2, box.getHeight() / 2, -box.getDepth() / 2);
-            Point3D upperLeftAway = new Point3D(-box.getWidth() / 2, -box.getHeight() / 2, box.getDepth() / 2);
-            Point3D upperRightAway = new Point3D(box.getWidth() / 2, -box.getHeight() / 2, box.getDepth() / 2);
-            Point3D lowerRightAway = new Point3D(box.getWidth() / 2, box.getHeight() / 2, box.getDepth() / 2);
-            Point3D lowerLeftAway = new Point3D(-box.getWidth() / 2, box.getHeight() / 2, box.getDepth() / 2);
-
-            for (Transform transform: box.getTransforms()) {
-                upperLeftClose = transform.transform(upperLeftClose);
-                upperRightClose = transform.transform(upperRightClose);
-                lowerRightClose = transform.transform(lowerRightClose);
-                lowerLeftClose = transform.transform(lowerLeftClose);
-                upperLeftAway = transform.transform(upperLeftAway);
-                upperRightAway = transform.transform(upperRightAway);
-                lowerRightAway = transform.transform(lowerRightAway);
-                lowerLeftAway = transform.transform(lowerLeftAway);
-            }
+        public static List<Maths.Rectangle> getRectanglesOfImage(double width, double height, double depth) {
+            Point3D upperLeftClose = new Point3D(-width / 2, -height / 2, -depth / 2);
+            Point3D upperRightClose = new Point3D(width / 2, -height / 2, -depth / 2);
+            Point3D lowerRightClose = new Point3D(width / 2, height / 2, -depth / 2);
+            Point3D lowerLeftClose = new Point3D(-width / 2, height / 2, -depth / 2);
+            Point3D upperLeftAway = new Point3D(-width / 2, -height / 2, depth / 2);
+            Point3D upperRightAway = new Point3D(width / 2, -height / 2, depth / 2);
+            Point3D lowerRightAway = new Point3D(width / 2, height / 2, depth / 2);
+            Point3D lowerLeftAway = new Point3D(-width / 2, height / 2, depth / 2);
 
             return List.of(
                     // front
@@ -223,10 +210,6 @@ class Maths {
         public Plane(Point3D normal, double d) {
             this.normal = normal;
             this.d = d;
-        }
-
-        public Point3D getNormal() {
-            return normal;
         }
 
         public Point3D getPointOnPlane() {

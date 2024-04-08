@@ -5,7 +5,6 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
 import javafx.scene.paint.PhongMaterial;
-import javafx.scene.shape.Box;
 import javafx.scene.shape.Mesh;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.Rectangle;
@@ -25,40 +24,64 @@ import java.util.stream.Stream;
 
 class Volume extends Group {
 
-    private final Box box;
-    private final Rectangle rectangle;
     private final ImageServer<BufferedImage> imageServer;
+    private final Rectangle slicer;
 
-    public Volume(Box box, Rectangle rectangle, ImageServer<BufferedImage> imageServer) {
-        this.box = box;
-        this.rectangle = rectangle;
+    public Volume(Rectangle slicer, ImageServer<BufferedImage> imageServer) {
         this.imageServer = imageServer;
+        this.slicer = slicer;
 
         draw();
-        rectangle.getTransforms().addListener((ListChangeListener<? super Transform>) change -> draw());
+        slicer.getTransforms().addListener((ListChangeListener<? super Transform>) change -> draw());
     }
 
     private void draw() {
-        getChildren().clear();
+        getChildren().setAll(getMeshes2());
+    }
 
-        for (Mesh mesh: getMeshesOfBoxInFrontOfRectangle()) {
-            MeshView meshView = new MeshView(mesh);
-            PhongMaterial material = new PhongMaterial();
+    private List<MeshView> getMeshes2() {
+        List<Face> faces = Face.getFacesOfCubeInFrontOfRectangle(imageServer.getWidth(), imageServer.getHeight(), imageServer.nZSlices(), getRectangle(slicer));
+        Point3D centroidOfVolume = Point3DExtension.centroid(faces.stream().map(Face::getPoints).flatMap(List::stream).toList());
 
-            try {
-                material.setDiffuseMap(SwingFXUtils.toFXImage(imageServer.readRegion(RegionRequest.createInstance(imageServer)), null));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        return faces.stream()
+                .map(face -> {
+                    MeshView meshView = new MeshView(face.computeMesh(centroidOfVolume));
 
-            meshView.setMaterial(material);
-            getChildren().add(meshView);
-        }
+                    PhongMaterial material = new PhongMaterial();
+                    try {
+                        material.setDiffuseMap(face.computeDiffuseMap(imageServer));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    meshView.setMaterial(material);
+
+                    return meshView;
+                })
+                .toList();
+    }
+
+    private List<MeshView> getMeshes() {
+        return getMeshesOfBoxInFrontOfRectangle().stream()
+                .map(mesh -> {
+                    MeshView meshView = new MeshView(mesh);
+                    PhongMaterial material = new PhongMaterial();
+
+                    try {
+                        material.setDiffuseMap(SwingFXUtils.toFXImage(imageServer.readRegion(RegionRequest.createInstance(imageServer)), null));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    meshView.setMaterial(material);
+                    return meshView;
+                })
+                .toList();
     }
 
     private List<Mesh> getMeshesOfBoxInFrontOfRectangle() {
         List<List<Point3D>> pointsOfVolume = Stream.concat(
-                Maths.Rectangle.getRectanglesOfBox(box).stream().map(r -> getPartOfRectangleInFrontOfOtherRectangle(r, getRectangle(rectangle))),
+                Maths.Rectangle.getRectanglesOfImage(imageServer.getWidth(), imageServer.getHeight(), imageServer.nZSlices()).stream()
+                        .map(r -> getPartOfRectangleInFrontOfOtherRectangle(r, getRectangle(slicer))),
                 Stream.of(getIntersectionPointsBetweenBoxAndRectangle())
         ).toList();
 
@@ -70,10 +93,8 @@ class Volume extends Group {
     }
 
     private List<Point3D> getIntersectionPointsBetweenBoxAndRectangle() {
-        Maths.Rectangle rect = getRectangle(rectangle);
-
-        return Maths.Rectangle.getRectanglesOfBox(box).stream()
-                .map(r -> Maths.findIntersectionLineBetweenRectangles(r, rect))
+        return Maths.Rectangle.getRectanglesOfImage(imageServer.getWidth(), imageServer.getHeight(), imageServer.nZSlices()).stream()
+                .map(r -> Maths.findIntersectionLineBetweenRectangles(r, getRectangle(slicer)))
                 .filter(Objects::nonNull)
                 .flatMap(s -> Stream.of(s.getA(), s.getB()))
                 .distinct()
@@ -179,11 +200,7 @@ class Volume extends Group {
 
     private static List<Point3D> getPointsOfRectangleInFrontOfPlane(Maths.Rectangle rectangle, Maths.Plane plane) {
         return rectangle.getPoints().stream()
-                .filter(p -> isPointInFrontOfPlane(p, plane))
+                .filter(p -> plane.distanceOfPoint(p) > 0)
                 .toList();
-    }
-
-    private static boolean isPointInFrontOfPlane(Point3D point, Maths.Plane plane) {
-        return plane.distanceOfPoint(point) > 0;
     }
 }

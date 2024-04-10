@@ -11,6 +11,7 @@ import qupath.lib.regions.RegionRequest;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -20,7 +21,7 @@ import java.util.stream.Stream;
 public class Face {
 
     private final Side side;
-    private final List<Point3D> points;
+    private final List<PairPoint> points;
     public enum Side {
         FRONT,
         TOP,
@@ -30,8 +31,9 @@ public class Face {
         BACK,
         SLICE
     }
+    public record PairPoint(Point3D pointInSpace, Point3D pixelCoordinate) {}
 
-    private Face(Side side, List<Point3D> points) {
+    private Face(Side side, List<PairPoint> points) {
         if (points.size() < 3) {
             throw new IllegalArgumentException("Size < 3");
         }
@@ -48,39 +50,48 @@ public class Face {
                 '}';
     }
 
-    public static List<Face> getFacesOfCubeInFrontOfRectangle(double width, double height, double depth, Maths.Rectangle rectangle) {
-        List<Face> facesOfCube = getFacesOfCube(width, height, depth);
+    public static List<Face> getFacesOfCubeInFrontOfRectangle(ImageServer<?> imageServer, Maths.Rectangle rectangle) {
+        List<Face> facesOfCube = getFacesOfCube(imageServer);
         List<Face> faces = new ArrayList<>();
 
         for (Face faceOfCube: facesOfCube) {
             List<Point3D> points = getPartOfRectangleInFrontOfOtherRectangle(
-                    new Maths.Rectangle(faceOfCube.points.get(0), faceOfCube.points.get(1), faceOfCube.points.get(2)),
+                    new Maths.Rectangle(faceOfCube.points.get(0).pointInSpace, faceOfCube.points.get(1).pointInSpace, faceOfCube.points.get(2).pointInSpace),
                     rectangle
             );
             if (points.size() > 3) {
-                faces.add(new Face(faceOfCube.side, points));
+                faces.add(new Face(faceOfCube.side, getPairPoints(faceOfCube, points)));
             }
         }
 
         List<Point3D> pointsOfSlicer = facesOfCube.stream()
-                .map(face -> Maths.findIntersectionLineBetweenRectangles(new Maths.Rectangle(face.points.get(0), face.points.get(1), face.points.get(2)), rectangle))
+                .map(face -> Maths.findIntersectionLineBetweenRectangles(new Maths.Rectangle(
+                        face.points.get(0).pointInSpace,
+                        face.points.get(1).pointInSpace,
+                        face.points.get(2).pointInSpace
+                ), rectangle))
                 .filter(Objects::nonNull)
                 .flatMap(s -> Stream.of(s.getA(), s.getB()))
                 .distinct()
                 .toList();
         if (pointsOfSlicer.size() > 2) {
-            faces.add(new Face(Side.SLICE, pointsOfSlicer));
+            //TODO: change
+            //faces.add(new Face(Side.SLICE, pointsOfSlicer));
         }
 
         return faces;
     }
 
-    public List<Point3D> getPoints() {
-        return points;
+    public List<Point3D> getPointsOfSpace() {
+        return points.stream().map(PairPoint::pointInSpace).toList();
+    }
+
+    public List<Point3D> getPixelCoordinates() {
+        return points.stream().map(PairPoint::pixelCoordinate).toList();
     }
 
     public Mesh computeMesh(Point3D centroidOfVolume) {
-        List<Point3D> sortedPoints = sortPoints(points, centroidOfVolume);
+        List<Point3D> sortedPoints = sortPoints(getPointsOfSpace(), centroidOfVolume);
 
         float[] vertices;
         float[] textureCoordinates;
@@ -92,16 +103,46 @@ public class Face {
             faceIndices = new int[0];
         } else {
             Function<Point3D, Double> xTextureMapping = switch (side) {
-                case FRONT, BACK -> Point3D::getX;
-                case TOP, BOTTOM -> Point3D::getY;
+                case FRONT, BACK, TOP, BOTTOM -> Point3D::getX;
                 case LEFT, RIGHT -> Point3D::getZ;
-                case SLICE -> p -> p.getX() + p.getY();         //TODO: to change
+                case SLICE -> p -> {
+                    Point3D bottomRightPoint = sortedPoints.get(0);
+                    Point3D pointBeforeBottomRightPoint = sortedPoints.get(sortedPoints.size()-1);
+                    Point3D pointAfterBottomRightPoint = sortedPoints.get(1);
+
+                    for (int i=1; i<sortedPoints.size(); i++) {
+                        if (sortedPoints.get(i).getY() > bottomRightPoint.getY() || (sortedPoints.get(i).getY() == bottomRightPoint.getY() && sortedPoints.get(i).getX() > bottomRightPoint.getX())) {
+                            bottomRightPoint = sortedPoints.get(i);
+                            pointBeforeBottomRightPoint = sortedPoints.get(i-1);
+                            pointAfterBottomRightPoint = sortedPoints.get(i == sortedPoints.size()-1 ? 0 : i+1);
+                        }
+                    }
+
+                    Point3D xPoint = pointBeforeBottomRightPoint.getY() > pointAfterBottomRightPoint.getY() ? pointBeforeBottomRightPoint : pointAfterBottomRightPoint;
+                    Point3D xVector = xPoint.subtract(bottomRightPoint);
+                    return p.dotProduct(xVector);
+                };
             };
             Function<Point3D, Double> yTextureMapping = switch (side) {
-                case FRONT, BACK -> Point3D::getY;
+                case FRONT, BACK, LEFT, RIGHT -> Point3D::getY;
                 case TOP, BOTTOM -> Point3D::getZ;
-                case LEFT, RIGHT -> Point3D::getX;
-                case SLICE -> p -> p.getX() + p.getY();         //TODO: to change
+                case SLICE -> p -> {
+                    Point3D bottomRightPoint = sortedPoints.get(0);
+                    Point3D pointBeforeBottomRightPoint = sortedPoints.get(sortedPoints.size()-1);
+                    Point3D pointAfterBottomRightPoint = sortedPoints.get(1);
+
+                    for (int i=1; i<sortedPoints.size(); i++) {
+                        if (sortedPoints.get(i).getY() > bottomRightPoint.getY() || (sortedPoints.get(i).getY() == bottomRightPoint.getY() && sortedPoints.get(i).getX() > bottomRightPoint.getX())) {
+                            bottomRightPoint = sortedPoints.get(i);
+                            pointBeforeBottomRightPoint = sortedPoints.get(i-1);
+                            pointAfterBottomRightPoint = sortedPoints.get(i == sortedPoints.size()-1 ? 0 : i+1);
+                        }
+                    }
+
+                    Point3D yPoint = pointBeforeBottomRightPoint.getY() > pointAfterBottomRightPoint.getY() ? pointAfterBottomRightPoint : pointBeforeBottomRightPoint;
+                    Point3D yVector = yPoint.subtract(bottomRightPoint);
+                    return p.dotProduct(yVector);
+                };
             };
 
             Point3D centroid = Point3DExtension.centroid(sortedPoints);
@@ -147,37 +188,36 @@ public class Face {
 
     public Image computeDiffuseMap(ImageServer<BufferedImage> server) throws IOException {
         BufferedImage image = switch (side) {
-            case FRONT, BACK -> server.readRegion(RegionRequest.createInstance(
+            case FRONT, BACK -> ImageServerExtension.toRGB(server.readRegion(RegionRequest.createInstance(
                     server.getPath(),
                     1.0,
-                    (int) (Point3DExtension.min(points, Point3D::getX) + (float) server.getWidth()/2),
-                    (int) (Point3DExtension.min(points, Point3D::getY) + (float) server.getHeight()/2),
-                    (int) (Point3DExtension.max(points, Point3D::getX) - Point3DExtension.min(points, Point3D::getX)),
-                    (int) (Point3DExtension.max(points, Point3D::getY) - Point3DExtension.min(points, Point3D::getY)),
-                    (int) (points.get(0).getZ() + server.nZSlices()/2),
+                    (int) (Point3DExtension.min(getPixelCoordinates(), Point3D::getX)),
+                    (int) (Point3DExtension.min(getPixelCoordinates(), Point3D::getY)),
+                    (int) (Point3DExtension.max(getPixelCoordinates(), Point3D::getX) - Point3DExtension.min(getPixelCoordinates(), Point3D::getX) + 1),
+                    (int) (Point3DExtension.max(getPixelCoordinates(), Point3D::getY) - Point3DExtension.min(getPixelCoordinates(), Point3D::getY) + 1),
+                    (int) (points.get(0).pixelCoordinate.getZ()),
+                    0
+            )));
+            case TOP, BOTTOM -> ImageServerExtension.toRGB(ImageServerExtension.getFixedY(
+                    server,
+                    (int) (Point3DExtension.min(getPixelCoordinates(), Point3D::getX)),
+                    (int) (Point3DExtension.min(getPixelCoordinates(), Point3D::getZ)),
+                    (int) (Point3DExtension.max(getPixelCoordinates(), Point3D::getX) - Point3DExtension.min(getPixelCoordinates(), Point3D::getX) + 1),
+                    (int) (Point3DExtension.max(getPixelCoordinates(), Point3D::getZ) - Point3DExtension.min(getPixelCoordinates(), Point3D::getZ) + 1),
+                    (int) (points.get(0).pixelCoordinate.getY()),
                     0
             ));
-            case TOP, BOTTOM -> ImageServerExtension.getFixedY(
+            case LEFT, RIGHT -> ImageServerExtension.toRGB(ImageServerExtension.getFixedX(
                     server,
-                    (int) (Point3DExtension.min(points, Point3D::getX) + (float) server.getWidth()/2),
-                    (int) (Point3DExtension.min(points, Point3D::getZ) + (float) server.nZSlices()/2),
-                    (int) (Point3DExtension.max(points, Point3D::getX) - Point3DExtension.min(points, Point3D::getX)),
-                    (int) (Point3DExtension.max(points, Point3D::getZ) - Point3DExtension.min(points, Point3D::getZ)),
-                    (int) (points.get(0).getY() + server.getHeight()/2),
+                    (int) (Point3DExtension.min(getPixelCoordinates(), Point3D::getY)),
+                    (int) (Point3DExtension.min(getPixelCoordinates(), Point3D::getZ)),
+                    (int) (Point3DExtension.max(getPixelCoordinates(), Point3D::getY) - Point3DExtension.min(getPixelCoordinates(), Point3D::getY) + 1),
+                    (int) (Point3DExtension.max(getPixelCoordinates(), Point3D::getZ) - Point3DExtension.min(getPixelCoordinates(), Point3D::getZ) + 1),
+                    (int) (points.get(0).pixelCoordinate.getX()),
                     0
-            );
-            case LEFT, RIGHT -> ImageServerExtension.getFixedX(
-                    server,
-                    (int) (Point3DExtension.min(points, Point3D::getY) + (float) server.getHeight()/2),
-                    (int) (Point3DExtension.min(points, Point3D::getZ) + (float) server.nZSlices()/2),
-                    (int) (Point3DExtension.max(points, Point3D::getY) - Point3DExtension.min(points, Point3D::getY)),
-                    (int) (Point3DExtension.max(points, Point3D::getZ) - Point3DExtension.min(points, Point3D::getZ)),
-                    (int) (points.get(0).getX() + server.getWidth()/2),
-                    0
-            );
-            case SLICE -> new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);  // TODO: change
+            ));
+            case SLICE -> ImageServerExtension.toRGB(ImageServerExtension.getArea(server, getPixelCoordinates(), 0));
         };
-
 
         if (image == null) {
             return null;
@@ -186,15 +226,71 @@ public class Face {
         }
     }
 
-    private static List<Face> getFacesOfCube(double width, double height, double depth) {
-        Point3D upperLeftClose = new Point3D(-width / 2, -height / 2, -depth / 2);
-        Point3D upperRightClose = new Point3D(width / 2, -height / 2, -depth / 2);
-        Point3D lowerRightClose = new Point3D(width / 2, height / 2, -depth / 2);
-        Point3D lowerLeftClose = new Point3D(-width / 2, height / 2, -depth / 2);
-        Point3D upperLeftAway = new Point3D(-width / 2, -height / 2, depth / 2);
-        Point3D upperRightAway = new Point3D(width / 2, -height / 2, depth / 2);
-        Point3D lowerRightAway = new Point3D(width / 2, height / 2, depth / 2);
-        Point3D lowerLeftAway = new Point3D(-width / 2, height / 2, depth / 2);
+    private static List<Face> getFacesOfCube(ImageServer<?> imageServer) {
+        PairPoint upperLeftClose = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * -imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * -imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * -imageServer.nZSlices() / 2
+                ),
+                new Point3D(0, 0, 0)
+        );
+        PairPoint upperRightClose = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * -imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * -imageServer.nZSlices() / 2
+                ),
+                new Point3D(imageServer.getWidth()-1, 0, 0)
+        );
+        PairPoint lowerRightClose = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * -imageServer.nZSlices() / 2
+                ),
+                new Point3D(imageServer.getWidth()-1, imageServer.getHeight()-1, 0)
+        );
+        PairPoint lowerLeftClose = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * -imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * -imageServer.nZSlices() / 2
+                ),
+                new Point3D(0, imageServer.getHeight()-1, 0)
+        );
+        PairPoint upperLeftAway = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * -imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * -imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * imageServer.nZSlices() / 2
+                ),
+                new Point3D(0, 0, imageServer.nZSlices()-1)
+        );
+        PairPoint upperRightAway = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * -imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * imageServer.nZSlices() / 2
+                ),
+                new Point3D(imageServer.getWidth()-1, 0, imageServer.nZSlices()-1)
+        );
+        PairPoint lowerRightAway = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * imageServer.nZSlices() / 2
+                ),
+                new Point3D(imageServer.getWidth()-1, imageServer.getHeight()-1, imageServer.nZSlices()-1)
+        );
+        PairPoint lowerLeftAway = new PairPoint(
+                new Point3D(
+                        (double) imageServer.getPixelCalibration().getPixelWidth() * -imageServer.getWidth() / 2,
+                        (double) imageServer.getPixelCalibration().getPixelHeight() * imageServer.getHeight() / 2,
+                        (double) imageServer.getPixelCalibration().getZSpacing() * imageServer.nZSlices() / 2
+                ),
+                new Point3D(0, imageServer.getHeight()-1, imageServer.nZSlices()-1)
+        );
 
         return List.of(
                 new Face(
@@ -287,5 +383,76 @@ public class Face {
                     .sorted(Comparator.comparingDouble(p -> Point3DExtension.signedAngle(ZA, p.subtract(Z), n)))
                     .toList();
         }
+    }
+
+    private static List<PairPoint> getPairPoints(Face faceOfCube, List<Point3D> points) {
+        return points.stream()
+                .map(p -> {
+                    for (PairPoint pairPoint: faceOfCube.points) {
+                        if (p.equals(pairPoint.pointInSpace)) {
+                            return pairPoint;
+                        }
+                    }
+
+                    List<PairPoint> pointsWithSameX = faceOfCube.points.stream()
+                            .filter(pairPoint -> pairPoint.pointInSpace.getX() == p.getX())
+                            .toList();
+                    List<PairPoint> pointsWithSameY = faceOfCube.points.stream()
+                            .filter(pairPoint -> pairPoint.pointInSpace.getY() == p.getY())
+                            .toList();
+                    List<PairPoint> pointsWithSameZ = faceOfCube.points.stream()
+                            .filter(pairPoint -> pairPoint.pointInSpace.getZ() == p.getZ())
+                            .toList();
+
+                    if (pointsWithSameX.size() == 2 && pointsWithSameY.size() == 4) {
+                        return new PairPoint(p, new Point3D(
+                                pointsWithSameX.get(0).pixelCoordinate.getX(),
+                                pointsWithSameX.get(0).pixelCoordinate.getY(),
+                                interpolate(p, pointsWithSameX.get(0), pointsWithSameX.get(1), Point3D::getZ)
+                        ));
+                    } else if (pointsWithSameX.size() == 2 && pointsWithSameZ.size() == 4) {
+                        return new PairPoint(p, new Point3D(
+                                pointsWithSameX.get(0).pixelCoordinate.getX(),
+                                interpolate(p, pointsWithSameX.get(0), pointsWithSameX.get(1), Point3D::getY),
+                                pointsWithSameX.get(0).pixelCoordinate.getZ()
+                        ));
+                    } else if (pointsWithSameY.size() == 2 && pointsWithSameX.size() == 4) {
+                        return new PairPoint(p, new Point3D(
+                                pointsWithSameY.get(0).pixelCoordinate.getX(),
+                                pointsWithSameY.get(0).pixelCoordinate.getY(),
+                                interpolate(p, pointsWithSameY.get(0), pointsWithSameY.get(1), Point3D::getZ)
+                        ));
+                    } else if (pointsWithSameY.size() == 2 && pointsWithSameZ.size() == 4) {
+                        return new PairPoint(p, new Point3D(
+                                interpolate(p, pointsWithSameY.get(0), pointsWithSameY.get(1), Point3D::getX),
+                                pointsWithSameY.get(0).pixelCoordinate.getY(),
+                                pointsWithSameY.get(0).pixelCoordinate.getZ()
+                        ));
+                    } else if (pointsWithSameZ.size() == 2 && pointsWithSameX.size() == 4) {
+                        return new PairPoint(p, new Point3D(
+                                pointsWithSameZ.get(0).pixelCoordinate.getX(),
+                                interpolate(p, pointsWithSameZ.get(0), pointsWithSameZ.get(1), Point3D::getY),
+                                pointsWithSameZ.get(0).pixelCoordinate.getZ()
+                        ));
+                    } else if (pointsWithSameZ.size() == 2 && pointsWithSameY.size() == 4) {
+                        return new PairPoint(p, new Point3D(
+                                interpolate(p, pointsWithSameZ.get(0), pointsWithSameZ.get(1), Point3D::getX),
+                                pointsWithSameZ.get(0).pixelCoordinate.getY(),
+                                pointsWithSameZ.get(0).pixelCoordinate.getZ()
+                        ));
+                    } else {
+                        throw new RuntimeException("not happen");
+                    }
+                })
+                .toList();
+    }
+
+    private static double interpolate(Point3D p, PairPoint p1, PairPoint p2, Function<Point3D, Double> coordinate) {
+        double pixel1 = coordinate.apply(p1.pixelCoordinate);
+        double pixel2 = coordinate.apply(p2.pixelCoordinate);
+        double point1 = coordinate.apply(p1.pointInSpace);
+        double point2 = coordinate.apply(p2.pointInSpace);
+
+        return pixel1 + ((coordinate.apply(p) - point1) / (point2 - point1)) * (pixel2 - pixel1);
     }
 }

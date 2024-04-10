@@ -1,5 +1,6 @@
 package qupath.ext.viewer.scene;
 
+import javafx.geometry.Point3D;
 import qupath.lib.images.servers.ImageServer;
 import qupath.lib.regions.RegionRequest;
 
@@ -10,6 +11,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ImageServerExtension {
+
+    public static BufferedImage toRGB(BufferedImage image) {
+        if (image == null) {
+            return null;
+        }
+
+        if (image.getType() == BufferedImage.TYPE_INT_RGB) {
+            return image;
+        } else {
+            int[] rgb = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+            BufferedImage rgbImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+            rgbImage.setRGB(0, 0, image.getWidth(), image.getHeight(), rgb, 0, image.getWidth());
+            return rgbImage;
+        }
+    }
 
     public static BufferedImage getFixedY(ImageServer<BufferedImage> server, int x, int z, int width, int depth, int y, int t) throws IOException {
         List<BufferedImage> slices = new ArrayList<>();
@@ -43,7 +59,6 @@ public class ImageServerExtension {
     public static BufferedImage getFixedX(ImageServer<BufferedImage> server, int y, int z, int height, int depth, int x, int t) throws IOException {
         List<BufferedImage> slices = new ArrayList<>();
 
-
         for (int zSlice = z; zSlice < z+depth; zSlice++) {
             slices.add(server.readRegion(RegionRequest.createInstance(
                     server.getPath(),
@@ -68,5 +83,9 @@ public class ImageServerExtension {
             graphics.dispose();
             return image;
         }
+    }
+
+    public static BufferedImage getArea(ImageServer<BufferedImage> server, List<Point3D> points, int t) throws IOException {
+        return null;
     }
 }

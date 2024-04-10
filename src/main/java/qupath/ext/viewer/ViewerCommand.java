@@ -3,8 +3,10 @@ package qupath.ext.viewer;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import qupath.lib.images.servers.ImageServer;
 import qupath.lib.images.servers.ImageServers;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 
 public class ViewerCommand implements Runnable {
@@ -19,7 +21,9 @@ public class ViewerCommand implements Runnable {
     @Override
     public void run() {
         try {
-            new Viewer(owner, ImageServers.buildServer("/Users/lleplat/QuPath/Images/CMU-1.jpg"));
+            //new Viewer(owner, ImageServers.buildServer("/Users/lleplat/QuPath/Images/CMU-1.jpg"));
+            //new Viewer(owner, ImageServers.buildServer("/Users/lleplat/QuPath/Images/mitosis.tif"));
+            new Viewer(owner, new SampleImageServer(BufferedImage.class));
         } catch (IOException e) {
             logger.error("Error when creating the viewer", e);
         }

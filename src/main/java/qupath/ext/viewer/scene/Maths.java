@@ -137,56 +137,6 @@ class Maths {
             return new Plane(normalA, d);
         }
 
-        public static List<Maths.Rectangle> getRectanglesOfImage(double width, double height, double depth) {
-            Point3D upperLeftClose = new Point3D(-width / 2, -height / 2, -depth / 2);
-            Point3D upperRightClose = new Point3D(width / 2, -height / 2, -depth / 2);
-            Point3D lowerRightClose = new Point3D(width / 2, height / 2, -depth / 2);
-            Point3D lowerLeftClose = new Point3D(-width / 2, height / 2, -depth / 2);
-            Point3D upperLeftAway = new Point3D(-width / 2, -height / 2, depth / 2);
-            Point3D upperRightAway = new Point3D(width / 2, -height / 2, depth / 2);
-            Point3D lowerRightAway = new Point3D(width / 2, height / 2, depth / 2);
-            Point3D lowerLeftAway = new Point3D(-width / 2, height / 2, depth / 2);
-
-            return List.of(
-                    // front
-                    new Maths.Rectangle(
-                            upperLeftClose,
-                            upperRightClose,
-                            lowerRightClose
-                    ),
-                    // top
-                    new Maths.Rectangle(
-                            upperLeftClose,
-                            upperRightClose,
-                            upperRightAway
-                    ),
-                    // bottom
-                    new Maths.Rectangle(
-                            lowerLeftClose,
-                            lowerRightClose,
-                            lowerRightAway
-                    ),
-                    // left
-                    new Maths.Rectangle(
-                            upperLeftClose,
-                            upperLeftAway,
-                            lowerLeftAway
-                    ),
-                    // right
-                    new Maths.Rectangle(
-                            upperRightClose,
-                            upperRightAway,
-                            lowerRightAway
-                    ),
-                    // back
-                    new Maths.Rectangle(
-                            upperLeftAway,
-                            upperRightAway,
-                            lowerRightAway
-                    )
-            );
-        }
-
         @Override
         public String toString() {
             return "origin: " + origin.toString() + " u: " + u.toString() + " v: " + v.toString();

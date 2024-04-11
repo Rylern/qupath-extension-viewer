@@ -11,7 +11,6 @@ import qupath.lib.regions.RegionRequest;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +59,7 @@ public class Face {
                     rectangle
             );
             if (points.size() > 3) {
-                faces.add(new Face(faceOfCube.side, getPairPoints(faceOfCube, points)));
+                faces.add(new Face(faceOfCube.side, computePixelCoordinates(faceOfCube.points, points)));
             }
         }
 
@@ -75,8 +74,10 @@ public class Face {
                 .distinct()
                 .toList();
         if (pointsOfSlicer.size() > 2) {
-            //TODO: change
-            //faces.add(new Face(Side.SLICE, pointsOfSlicer));
+            faces.add(new Face(Side.SLICE, computePixelCoordinates(
+                    facesOfCube.stream().map(f -> f.points).flatMap(List::stream).toList(),
+                    pointsOfSlicer
+            )));
         }
 
         return faces;
@@ -385,61 +386,48 @@ public class Face {
         }
     }
 
-    private static List<PairPoint> getPairPoints(Face faceOfCube, List<Point3D> points) {
+    private static List<PairPoint> computePixelCoordinates(List<PairPoint> references, List<Point3D> points) {
+        List<PairPoint> uniqueReferences = references.stream().distinct().toList();
+
         return points.stream()
                 .map(p -> {
-                    for (PairPoint pairPoint: faceOfCube.points) {
+                    for (PairPoint pairPoint : uniqueReferences) {
                         if (p.equals(pairPoint.pointInSpace)) {
                             return pairPoint;
                         }
                     }
 
-                    List<PairPoint> pointsWithSameX = faceOfCube.points.stream()
-                            .filter(pairPoint -> pairPoint.pointInSpace.getX() == p.getX())
-                            .toList();
-                    List<PairPoint> pointsWithSameY = faceOfCube.points.stream()
-                            .filter(pairPoint -> pairPoint.pointInSpace.getY() == p.getY())
-                            .toList();
-                    List<PairPoint> pointsWithSameZ = faceOfCube.points.stream()
-                            .filter(pairPoint -> pairPoint.pointInSpace.getZ() == p.getZ())
+                    List<PairPoint> pointsWithTwoCoordinateEqual = uniqueReferences.stream()
+                            .filter(pairPoint -> (pairPoint.pointInSpace.getX() == p.getX() && pairPoint.pointInSpace.getY() == p.getY()) ||
+                                    (pairPoint.pointInSpace.getX() == p.getX() && pairPoint.pointInSpace.getZ() == p.getZ()) ||
+                                    (pairPoint.pointInSpace.getY() == p.getY() && pairPoint.pointInSpace.getZ() == p.getZ())
+                            )
                             .toList();
 
-                    if (pointsWithSameX.size() == 2 && pointsWithSameY.size() == 4) {
-                        return new PairPoint(p, new Point3D(
-                                pointsWithSameX.get(0).pixelCoordinate.getX(),
-                                pointsWithSameX.get(0).pixelCoordinate.getY(),
-                                interpolate(p, pointsWithSameX.get(0), pointsWithSameX.get(1), Point3D::getZ)
-                        ));
-                    } else if (pointsWithSameX.size() == 2 && pointsWithSameZ.size() == 4) {
-                        return new PairPoint(p, new Point3D(
-                                pointsWithSameX.get(0).pixelCoordinate.getX(),
-                                interpolate(p, pointsWithSameX.get(0), pointsWithSameX.get(1), Point3D::getY),
-                                pointsWithSameX.get(0).pixelCoordinate.getZ()
-                        ));
-                    } else if (pointsWithSameY.size() == 2 && pointsWithSameX.size() == 4) {
-                        return new PairPoint(p, new Point3D(
-                                pointsWithSameY.get(0).pixelCoordinate.getX(),
-                                pointsWithSameY.get(0).pixelCoordinate.getY(),
-                                interpolate(p, pointsWithSameY.get(0), pointsWithSameY.get(1), Point3D::getZ)
-                        ));
-                    } else if (pointsWithSameY.size() == 2 && pointsWithSameZ.size() == 4) {
-                        return new PairPoint(p, new Point3D(
-                                interpolate(p, pointsWithSameY.get(0), pointsWithSameY.get(1), Point3D::getX),
-                                pointsWithSameY.get(0).pixelCoordinate.getY(),
-                                pointsWithSameY.get(0).pixelCoordinate.getZ()
-                        ));
-                    } else if (pointsWithSameZ.size() == 2 && pointsWithSameX.size() == 4) {
-                        return new PairPoint(p, new Point3D(
-                                pointsWithSameZ.get(0).pixelCoordinate.getX(),
-                                interpolate(p, pointsWithSameZ.get(0), pointsWithSameZ.get(1), Point3D::getY),
-                                pointsWithSameZ.get(0).pixelCoordinate.getZ()
-                        ));
-                    } else if (pointsWithSameZ.size() == 2 && pointsWithSameY.size() == 4) {
-                        return new PairPoint(p, new Point3D(
-                                interpolate(p, pointsWithSameZ.get(0), pointsWithSameZ.get(1), Point3D::getX),
-                                pointsWithSameZ.get(0).pixelCoordinate.getY(),
-                                pointsWithSameZ.get(0).pixelCoordinate.getZ()
-                        ));
+                    if (pointsWithTwoCoordinateEqual.size() == 2) {
+                        if (pointsWithTwoCoordinateEqual.get(0).pointInSpace.getX() == p.getX() &&
+                                pointsWithTwoCoordinateEqual.get(0).pointInSpace.getY() == p.getY()
+                        ) {
+                            return new PairPoint(p, new Point3D(
+                                    pointsWithTwoCoordinateEqual.get(0).pixelCoordinate.getX(),
+                                    pointsWithTwoCoordinateEqual.get(0).pixelCoordinate.getY(),
+                                    interpolate(p, pointsWithTwoCoordinateEqual.get(0), pointsWithTwoCoordinateEqual.get(1), Point3D::getZ)
+                            ));
+                        } else if (pointsWithTwoCoordinateEqual.get(0).pointInSpace.getX() == p.getX() &&
+                                pointsWithTwoCoordinateEqual.get(0).pointInSpace.getZ() == p.getZ()
+                        ) {
+                            return new PairPoint(p, new Point3D(
+                                    pointsWithTwoCoordinateEqual.get(0).pixelCoordinate.getX(),
+                                    interpolate(p, pointsWithTwoCoordinateEqual.get(0), pointsWithTwoCoordinateEqual.get(1), Point3D::getY),
+                                    pointsWithTwoCoordinateEqual.get(0).pixelCoordinate.getZ()
+                            ));
+                        } else {
+                            return new PairPoint(p, new Point3D(
+                                    interpolate(p, pointsWithTwoCoordinateEqual.get(0), pointsWithTwoCoordinateEqual.get(1), Point3D::getX),
+                                    pointsWithTwoCoordinateEqual.get(0).pixelCoordinate.getY(),
+                                    pointsWithTwoCoordinateEqual.get(0).pixelCoordinate.getZ()
+                            ));
+                        }
                     } else {
                         throw new RuntimeException("not happen");
                     }

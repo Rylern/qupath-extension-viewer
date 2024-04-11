@@ -86,6 +86,8 @@ public class ImageServerExtension {
     }
 
     public static BufferedImage getArea(ImageServer<BufferedImage> server, List<Point3D> points, int t) throws IOException {
+
+
         return null;
     }
 }

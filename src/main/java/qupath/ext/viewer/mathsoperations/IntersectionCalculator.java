@@ -22,8 +22,15 @@ class IntersectionCalculator {
         if (segmentA == null || segmentB == null) {
             return null;
         } else {
-            //TODO: improve, it should be the points of the segments that belong to both rectangles
-            return segmentA;
+            List<Point3D> pointsBelongingToBothSegments = Stream.of(segmentA.a(), segmentA.b(), segmentB.a(), segmentB.b())
+                    .filter(p -> segmentA.containPoint(p, EPSILON) && segmentB.containPoint(p, EPSILON))
+                    .toList();
+
+            if (pointsBelongingToBothSegments.size() == 2) {
+                return new Segment(pointsBelongingToBothSegments.get(0), pointsBelongingToBothSegments.get(1));
+            } else {
+                return null;
+            }
         }
     }
 

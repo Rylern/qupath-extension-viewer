@@ -1,18 +1,16 @@
-package qupath.ext.viewer.maths;
+package qupath.ext.viewer.mathsoperations;
 
 import javafx.geometry.Point3D;
 
 import java.util.List;
 
-public class BoundingRectangle {
+public class BoundingRectangleCalculator {
 
-    public static Maths.Rectangle getBoundingRectangle(List<Point3D> points) {
-        //TODO: check if already rectangle before rest
-
+    public static Rectangle getFromPoints(List<Point3D> points) {
         //https://www.geometrictools.com/Documentation/MinimumAreaRectangle.pdf
 
         double minArea = Double.POSITIVE_INFINITY;
-        Maths.Rectangle boundingRectangle = null;
+        Rectangle boundingRectangle = null;
 
         for (int i0 = points.size()-1, i1 = 0; i1 < points.size(); i0 = i1++) {
             Point3D origin = points.get(i0);
@@ -41,7 +39,7 @@ public class BoundingRectangle {
             double area = (max0 - min0) * max1;
             if (area < minArea) {
                 minArea = area;
-                boundingRectangle = new Maths.Rectangle(
+                boundingRectangle = new Rectangle(
                         origin.add(U0.multiply(min0)),
                         origin.add(U0.multiply(max0)),
                         origin.add(U0.multiply(max0)).add(U1.multiply(max1))

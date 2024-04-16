@@ -9,8 +9,8 @@ import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
 import qupath.ext.viewer.extensions.ImageServerExtension;
 import qupath.ext.viewer.extensions.Point3DExtension;
-import qupath.ext.viewer.maths.BoundingRectangle;
-import qupath.ext.viewer.maths.Maths;
+import qupath.ext.viewer.mathsoperations.BoundingRectangleCalculator;
+import qupath.ext.viewer.mathsoperations.Rectangle;
 import qupath.lib.images.servers.ImageServer;
 
 import java.awt.image.BufferedImage;
@@ -22,7 +22,7 @@ import java.util.function.Function;
 public class Face {
 
     private final List<Point3D> points;
-    private final Maths.Rectangle boundingRectangle;
+    private final Rectangle boundingRectangle;
     private final Function<Point3D, Point3D> spaceToPixelTransform;
 
     public Face(List<Point3D> points, Function<Point3D, Point3D> spaceToPixelTransform) {
@@ -31,7 +31,7 @@ public class Face {
         }
 
         this.points = points;
-        this.boundingRectangle = BoundingRectangle.getBoundingRectangle(sortPoints(points, null));
+        this.boundingRectangle = BoundingRectangleCalculator.getFromPoints(sortPoints(points, null));
         this.spaceToPixelTransform = spaceToPixelTransform;
     }
 
@@ -56,7 +56,7 @@ public class Face {
     private Image computeDiffuseMap(ImageServer<BufferedImage> imageServer) throws IOException {
         BufferedImage image = ImageServerExtension.toRGB(ImageServerExtension.readRegion(
                 imageServer,
-                new Maths.Rectangle(boundingRectangle, spaceToPixelTransform),
+                new Rectangle(boundingRectangle, spaceToPixelTransform),
                 0
         ));
 
@@ -72,8 +72,8 @@ public class Face {
         float[] textureCoordinates;
         int[] faceIndices;
 
-        Function<Point3D, Double> xTextureMapping = p -> p.subtract(boundingRectangle.origin).dotProduct(boundingRectangle.u);
-        Function<Point3D, Double> yTextureMapping = p -> p.subtract(boundingRectangle.origin).dotProduct(boundingRectangle.v);
+        Function<Point3D, Double> xTextureMapping = p -> p.subtract(boundingRectangle.p0()).dotProduct(boundingRectangle.getU());
+        Function<Point3D, Double> yTextureMapping = p -> p.subtract(boundingRectangle.p0()).dotProduct(boundingRectangle.getV());
 
         List<Point3D> points = sortPoints(this.points, centroidOfVolume);
 

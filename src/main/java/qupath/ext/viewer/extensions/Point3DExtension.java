@@ -2,6 +2,8 @@ package qupath.ext.viewer.extensions;
 
 import javafx.geometry.Point3D;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.function.Function;
 
@@ -49,6 +51,22 @@ public class Point3DExtension {
 
     public static double signedAngle(Point3D from, Point3D to, Point3D axis) {
         return from.angle(to) * sign(axis.dotProduct(from.crossProduct(to)));
+    }
+
+    public static Point3D round(Point3D point, int precision) {
+        BigDecimal bdX = new BigDecimal(Double.toString(point.getX()));
+        BigDecimal bdY = new BigDecimal(Double.toString(point.getY()));
+        BigDecimal bdZ = new BigDecimal(Double.toString(point.getZ()));
+
+        bdX = bdX.setScale(precision, RoundingMode.HALF_UP);
+        bdY = bdY.setScale(precision, RoundingMode.HALF_UP);
+        bdZ = bdZ.setScale(precision, RoundingMode.HALF_UP);
+
+        return new Point3D(
+                bdX.doubleValue(),
+                bdY.doubleValue(),
+                bdZ.doubleValue()
+        );
     }
 
     private static int sign(double a) {

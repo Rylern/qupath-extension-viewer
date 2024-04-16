@@ -1,20 +1,16 @@
 package qupath.ext.viewer.scene;
 
 import javafx.geometry.Point3D;
-import qupath.ext.viewer.maths.Maths;
+import qupath.ext.viewer.mathsoperations.Rectangle;
 import qupath.lib.images.servers.ImageServer;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 public class Cube {
 
-    private final List<Maths.Rectangle> sides;
+    private final List<Rectangle> sides;
     private final Function<Point3D, Point3D> spaceToPixelTransform;
 
     public Cube(ImageServer<?> imageServer) {
@@ -22,28 +18,18 @@ public class Cube {
         spaceToPixelTransform = getSpaceToPixelTransform(imageServer);
     }
 
-    public List<Face> getFacesInFrontOfRectangle(Maths.Rectangle rectangle) {
+    public List<Face> getFacesInFrontOfRectangle(Rectangle rectangle) {
         List<Face> faces = new ArrayList<>();
 
-        for (Maths.Rectangle side: this.sides) {
-            List<Point3D> points = Maths.getPartOfRectangleInFrontOfOtherRectangle(side, rectangle);
+        for (Rectangle side: this.sides) {
+            List<Point3D> points = side.getPartOfRectangleInFrontOfOtherRectangle(rectangle);
 
             if (points.size() > 2) {
                 faces.add(new Face(points, spaceToPixelTransform));
             }
         }
 
-        List<Point3D> pointsOfSlicer = this.sides.stream()
-                .map(side -> Maths.findIntersectionLineBetweenRectangles(side, rectangle))
-                .filter(Objects::nonNull)
-                .flatMap(s -> Stream.of(s.getA(), s.getB()))
-                .map(p -> new Point3D(
-                        round(p.getX()),
-                        round(p.getY()),
-                        round(p.getZ())
-                ))  // rounding is necessary to remove points not equal due to precision errors
-                .distinct()
-                .toList();
+        List<Point3D> pointsOfSlicer = rectangle.getPartOfRectangleInsideCube(this.sides);
         if (pointsOfSlicer.size() > 2) {
             faces.add(new Face(pointsOfSlicer, spaceToPixelTransform));
         }
@@ -51,7 +37,7 @@ public class Cube {
         return faces;
     }
 
-    private static List<Maths.Rectangle> getSides(ImageServer<?> imageServer) {
+    private static List<Rectangle> getSides(ImageServer<?> imageServer) {
         Point3D upperLeftClose = new Point3D(
                 (double) imageServer.getPixelCalibration().getPixelWidth() * -imageServer.getWidth() / 2,
                 (double) imageServer.getPixelCalibration().getPixelHeight() * -imageServer.getHeight() / 2,
@@ -94,32 +80,32 @@ public class Cube {
         );
 
         return List.of(
-                new Maths.Rectangle(
+                new Rectangle(
                         upperLeftClose,
                         upperRightClose,
                         lowerRightClose
                 ),
-                new Maths.Rectangle(
+                new Rectangle(
                         upperLeftClose,
                         upperRightClose,
                         upperRightAway
                 ),
-                new Maths.Rectangle(
+                new Rectangle(
                         lowerLeftClose,
                         lowerRightClose,
                         lowerRightAway
                 ),
-                new Maths.Rectangle(
+                new Rectangle(
                         upperLeftClose,
                         upperLeftAway,
                         lowerLeftAway
                 ),
-                new Maths.Rectangle(
+                new Rectangle(
                         upperRightClose,
                         upperRightAway,
                         lowerRightAway
                 ),
-                new Maths.Rectangle(
+                new Rectangle(
                         upperLeftAway,
                         upperRightAway,
                         lowerRightAway
@@ -138,11 +124,5 @@ public class Cube {
                 (p.getZ() - imageServer.getPixelCalibration().getZSpacing().doubleValue() * imageServer.nZSlices() / 2) * (imageServer.nZSlices() - 1) /
                         (-imageServer.getPixelCalibration().getZSpacing().doubleValue() * imageServer.nZSlices())
         );
-    }
-
-    private static double round(double value) {
-        BigDecimal bd = new BigDecimal(Double.toString(value));
-        bd = bd.setScale(5, RoundingMode.HALF_UP);
-        return bd.doubleValue();
     }
 }

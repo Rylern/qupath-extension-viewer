@@ -3,14 +3,14 @@ package qupath.ext.viewer.scene;
 import javafx.collections.ListChangeListener;
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
-import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Transform;
+import qupath.ext.viewer.extensions.Point3DExtension;
+import qupath.ext.viewer.maths.Maths;
 import qupath.lib.images.servers.ImageServer;
 
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,24 +33,13 @@ class Volume extends Group {
     }
 
     private List<MeshView> getMeshes() {
-        List<Face> faces = Face.getFacesOfCubeInFrontOfRectangle(imageServer, getRectangle(slicer));
-        Point3D centroidOfVolume = Point3DExtension.centroid(faces.stream().map(Face::getPointsOfSpace).flatMap(List::stream).toList());
+        Cube cube = new Cube(imageServer);
+        List<Face> faces = cube.getFacesInFrontOfRectangle(getRectangle(slicer));
+        Point3D centroidOfVolume = Point3DExtension.centroid(faces.stream().map(Face::getPoints).flatMap(List::stream).toList());
 
-        return faces.stream()
-                .map(face -> {
-                    MeshView meshView = new MeshView(face.computeMesh(centroidOfVolume));
-
-                    PhongMaterial material = new PhongMaterial();
-                    try {
-                        material.setDiffuseMap(face.computeDiffuseMap(imageServer));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    meshView.setMaterial(material);
-
-                    return meshView;
-                })
-                .toList();
+        return faces.stream().map(
+                f -> f.computeMeshView(centroidOfVolume, imageServer)
+        ).toList();
     }
 
     private static Maths.Rectangle getRectangle(Rectangle rectangle) {

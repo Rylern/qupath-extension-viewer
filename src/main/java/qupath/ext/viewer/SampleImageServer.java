@@ -19,7 +19,7 @@ import java.util.List;
 
 public class SampleImageServer extends AbstractImageServer<BufferedImage> {
 
-    protected SampleImageServer(Class<BufferedImage> imageClass) {
+    public SampleImageServer(Class<BufferedImage> imageClass) {
         super(imageClass);
     }
 

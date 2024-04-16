@@ -1,12 +1,14 @@
-package qupath.ext.viewer.scene;
+package qupath.ext.viewer.maths;
 
 
 import javafx.geometry.Point3D;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
-class Maths {
+public class Maths {
 
     private static final double EPSILON = 0.00001;
 
@@ -25,6 +27,26 @@ class Maths {
             //TODO: improve, it should be the points of the segments that belong to both rectangles
             return segmentA;
         }
+    }
+
+    public static List<Point3D> getPartOfRectangleInFrontOfOtherRectangle(Maths.Rectangle rectangleToCut, Maths.Rectangle rectangle) {
+        List<Point3D> pointsOfRectangleInFrontOfPlane = getPointsOfRectangleInFrontOfPlane(rectangleToCut, rectangle.getPlane());
+        Maths.Segment segment = Maths.findIntersectionLineBetweenRectangles(rectangleToCut, rectangle);
+
+        if (segment == null) {
+            return pointsOfRectangleInFrontOfPlane;
+        } else {
+            return Stream.concat(
+                    pointsOfRectangleInFrontOfPlane.stream(),
+                    Stream.of(segment.getA(), segment.getB())
+            ).toList();
+        }
+    }
+
+    private static List<Point3D> getPointsOfRectangleInFrontOfPlane(Maths.Rectangle rectangle, Maths.Plane plane) {
+        return rectangle.getPoints().stream()
+                .filter(p -> plane.distanceOfPoint(p) > 0)
+                .toList();
     }
 
     public static Point3D findIntersectionPointBetweenLineAndPlane(Line line, Plane plane) {
@@ -96,9 +118,12 @@ class Maths {
 
 
     public static class Rectangle {
-        private final Point3D origin;
-        private final Point3D u;
-        private final Point3D v;
+        public final Point3D origin;
+        public final Point3D u;
+        public final Point3D v;
+        public final Point3D p0;
+        public final Point3D p1;
+        public final Point3D p2;
 
         /**
          * params in order
@@ -108,9 +133,20 @@ class Maths {
          * @param p2
          */
         public Rectangle(Point3D p0, Point3D p1, Point3D p2) {
+            this.p0 = p0;
+            this.p1 = p1;
+            this.p2 = p2;
             this.origin = p0;
             this.u = p1.subtract(p0);
             this.v = p2.subtract(p1);
+        }
+
+        public Rectangle(Rectangle rectangle, Function<Point3D, Point3D> transform) {
+            this(
+                    transform.apply(rectangle.p0),
+                    transform.apply(rectangle.p1),
+                    transform.apply(rectangle.p2)
+            );
         }
 
         public List<Segment> getSegments() {

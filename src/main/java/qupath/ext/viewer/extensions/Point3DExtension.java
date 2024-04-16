@@ -1,4 +1,4 @@
-package qupath.ext.viewer.scene;
+package qupath.ext.viewer.extensions;
 
 import javafx.geometry.Point3D;
 
@@ -40,7 +40,7 @@ public class Point3DExtension {
             }
         }
 
-        if (largestCrossProduct.dotProduct(directionOfNormal) >= 0) {
+        if (directionOfNormal == null || largestCrossProduct.dotProduct(directionOfNormal) >= 0) {
             return largestCrossProduct;
         } else {
             return largestCrossProduct.multiply(-1);

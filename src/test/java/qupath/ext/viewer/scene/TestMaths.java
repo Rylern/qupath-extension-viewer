@@ -3,6 +3,7 @@ package qupath.ext.viewer.scene;
 import javafx.geometry.Point3D;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import qupath.ext.viewer.maths.Maths;
 
 public class TestMaths {
 

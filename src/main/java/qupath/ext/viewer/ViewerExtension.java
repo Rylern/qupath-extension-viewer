@@ -8,6 +8,10 @@ import qupath.lib.gui.actions.ActionTools;
 import qupath.lib.gui.extensions.GitHubProject;
 import qupath.lib.gui.extensions.QuPathExtension;
 import qupath.lib.gui.tools.MenuTools;
+import qupath.lib.images.servers.ImageServer;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 public class ViewerExtension implements QuPathExtension, GitHubProject {
 
@@ -27,13 +31,30 @@ public class ViewerExtension implements QuPathExtension, GitHubProject {
 			MenuTools.addMenuItems(qupath.getMenu("Extensions", false),
 					MenuTools.createMenu("3D viewer",
 							ActionTools.createAction(
-									new ViewerCommand(qupath.getStage()),
-									ViewerCommand.getMenuTitle()
+									() -> {
+										try {
+											new Viewer(qupath.getStage(), new SampleImageServer(BufferedImage.class));
+										} catch (IOException e) {
+											throw new RuntimeException(e);
+										}
+									},
+									"Open the sample image"
+							),
+							ActionTools.createAction(
+									() -> {
+										try {
+											ImageServer<BufferedImage> server = QuPathGUI.getInstance().getViewer().getServer();
+											if (server != null) {
+												new Viewer(qupath.getStage(), server);
+											}
+										} catch (IOException e) {
+											throw new RuntimeException(e);
+										}
+									},
+									"Open the current image"
 							)
 					)
 			);
-
-			new ViewerCommand(qupath.getStage()).run();
 
 			isInstalled = true;
 		}

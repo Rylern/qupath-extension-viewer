@@ -1,0 +1,1 @@
+A QuPath extension to investigate the use of the JavaFX 3D API to create a multidimensional viewer.

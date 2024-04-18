@@ -17,7 +17,6 @@ base {
 }
 
 ext.qupathVersion = gradle.ext.qupathVersion
-ext.qupathVersion = '0.5.1'       // TODO: change
 
 ext.qupathJavaVersion = 17
 

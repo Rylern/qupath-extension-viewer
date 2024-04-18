@@ -6,17 +6,32 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 
-public class Slicer extends Rectangle {
+/**
+ * A rectangle in a 3D space whose translation on the z-axis
+ * and rotations and the x and y-axis can be updated.
+ * Its is centered in (0, 0, 0).
+ */
+class Slicer extends Rectangle {
 
+    /**
+     * Create the slicer.
+     *
+     * @param width  the width of the slicer
+     * @param height  the height of the slicer
+     * @param depth  the depth of the image this slicer will slice
+     * @param translationSliderValue  the translation on the z-axis this slider should have
+     * @param xRotationSliderValue  the rotation on the x-axis this slider should have
+     * @param yRotationSliderValue  the rotation on the y-axis this slider should have
+     */
     public Slicer(
-            int width,
-            int height,
-            int depth,
+            double width,
+            double height,
+            double depth,
             ObservableDoubleValue translationSliderValue,
             ObservableDoubleValue xRotationSliderValue,
             ObservableDoubleValue yRotationSliderValue
     ) {
-        super(-width, -height, 2*width, 2*height);
+        super(-width/2, -height/2, width, height);
         setFill(Color.BLUE);
 
         updateTransforms(translationSliderValue, xRotationSliderValue, yRotationSliderValue, depth);

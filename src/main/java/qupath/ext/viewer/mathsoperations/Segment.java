@@ -2,14 +2,28 @@ package qupath.ext.viewer.mathsoperations;
 
 import javafx.geometry.Point3D;
 
+/**
+ * A segment in the 3D space.
+ *
+ * @param a  the one end of the segment
+ * @param b  the other end of the segment
+ */
 record Segment(Point3D a, Point3D b) {
 
-    public boolean containPoint(Point3D point, double precision) {
+    /**
+     * Indicate if the distance between a point and this segment
+     * is less than the given distance.
+     *
+     * @param point  the point whose distance with this segment should be computed
+     * @param distance  the maximum distance between the point and this segment
+     * @return whether the distance between the point and this segment is less than the given distance
+     */
+    public boolean containPoint(Point3D point, double distance) {
         double AB = a.distance(b);
         double AP = a.distance(point);
         double PB = point.distance(b);
 
-        return Math.abs(AP + PB - AB) < precision;    // equivalent to AP + PB = AB
+        return Math.abs(AP + PB - AB) < distance;
     }
 
     @Override

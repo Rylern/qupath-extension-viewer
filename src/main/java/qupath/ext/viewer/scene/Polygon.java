@@ -7,6 +7,7 @@ import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Mesh;
 import javafx.scene.shape.MeshView;
 import javafx.scene.shape.TriangleMesh;
+import qupath.ext.viewer.extensions.BufferedImageExtension;
 import qupath.ext.viewer.extensions.ImageServerExtension;
 import qupath.ext.viewer.extensions.Point3DExtension;
 import qupath.ext.viewer.mathsoperations.BoundingRectangleCalculator;
@@ -19,13 +20,24 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
-public class Face {
+/**
+ * A 2D polygon in a 3D space. It is possible to create
+ * a MeshView from it.
+ */
+class Polygon {
 
     private final List<Point3D> points;
     private final Rectangle boundingRectangle;
     private final Function<Point3D, Point3D> spaceToPixelTransform;
 
-    public Face(List<Point3D> points, Function<Point3D, Point3D> spaceToPixelTransform) {
+    /**
+     * Create a polygon.
+     *
+     * @param points  the vertices of the polygon. They don't have to be in order
+     * @param spaceToPixelTransform  a function that maps a point in space to a pixel coordinate of an image
+     * @throws IllegalArgumentException when the number of points is less than 3
+     */
+    public Polygon(List<Point3D> points, Function<Point3D, Point3D> spaceToPixelTransform) {
         if (points.size() < 3) {
             throw new IllegalArgumentException("Number of points < 3");
         }
@@ -35,11 +47,23 @@ public class Face {
         this.spaceToPixelTransform = spaceToPixelTransform;
     }
 
+    /**
+     * @return an unordered list of vertices of this polygon
+     */
     public List<Point3D> getPoints() {
         return points;
     }
 
-    public MeshView computeMeshView(Point3D centroidOfVolume, ImageServer<BufferedImage> imageServer) {
+    /**
+     * Compute a MeshView that represents this polygon.
+     *
+     * @param imageServer  the image this polygon should represent
+     * @param centroidOfVolume  the centroid of the 3D object this polygon is part of.
+     *                          This is required to correctly orient this polygon but can be null
+     *                          if the orientation doesn't matter.
+     * @return a MeshView that represents this polygon
+     */
+    public MeshView computeMeshView(ImageServer<BufferedImage> imageServer, Point3D centroidOfVolume) {
         MeshView meshView = new MeshView(computeMesh(centroidOfVolume));
 
         PhongMaterial material = new PhongMaterial();
@@ -53,8 +77,17 @@ public class Face {
         return meshView;
     }
 
+    /**
+     * Compute the <a href="https://learnopengl.com/Lighting/Lighting-maps">diffuse map</a>
+     * this polygon should display.
+     *
+     * @param imageServer  the image to represent
+     * @return a diffuse map representing part of the image corresponding to this polygon,
+     * or null if the diffuse map couldn't be computed
+     * @throws IOException when an error occurs while reading the image
+     */
     private Image computeDiffuseMap(ImageServer<BufferedImage> imageServer) throws IOException {
-        BufferedImage image = ImageServerExtension.toRGB(ImageServerExtension.readRegion(
+        BufferedImage image = BufferedImageExtension.toRGB(ImageServerExtension.readRegion(
                 imageServer,
                 new Rectangle(boundingRectangle, spaceToPixelTransform),
                 0
@@ -67,6 +100,18 @@ public class Face {
         }
     }
 
+    /**
+     * Compute the <a href="https://en.wikipedia.org/wiki/Polygon_mesh">mesh</a>
+     * of this polygon.
+     * This polygon is represented by a set of triangles. Each triangle has one vertex which is the
+     * centroid of this polygon and the other two vertices are two consecutive vertices of
+     * this polygon.
+     *
+     * @param centroidOfVolume the centroid of the 3D object this polygon is part of.
+     *                         This is required to correctly orient this polygon but can be null
+     *                         if the orientation doesn't matter.
+     * @return the mesh this polygon represent
+     */
     private Mesh computeMesh(Point3D centroidOfVolume) {
         float[] vertices;
         float[] textureCoordinates;
@@ -117,8 +162,19 @@ public class Face {
         return mesh;
     }
 
+    /**
+     * Sort a list of points.
+     *
+     * @param points  the points to sort
+     * @param volumeCentroid  the centroid of the 3D object this list of points is part of.
+     *                        This is required to correctly orient this list of points but can be null
+     *                        if the orientation doesn't matter.
+     * @return the sorted points
+     */
     private static List<Point3D> sortPoints(List<Point3D> points, Point3D volumeCentroid) {
-        //https://stackoverflow.com/questions/20387282/compute-the-cross-section-of-a-cube?fbclid=IwAR1a5zUPQOaICBawb7Wy1aymAGvoX97wELTFij1kYfC5Z-zvNph9ftWdr4s
+        // This function follows the method described in:
+        // https://stackoverflow.com/a/20387683
+
         Point3D Z = Point3DExtension.centroid(points);
         Point3D n = Point3DExtension.normal(points, Z, volumeCentroid == null ? null : Z.subtract(volumeCentroid));
         Point3D ZA = points.get(0).subtract(Z);

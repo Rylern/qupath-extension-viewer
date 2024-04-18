@@ -7,18 +7,29 @@ import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.SubScene;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.PhongMaterial;
-import javafx.scene.shape.Box;
 import javafx.scene.shape.Rectangle;
 import qupath.lib.images.servers.ImageServer;
 
 import java.awt.image.BufferedImage;
 
+/**
+ * Represent the 3D scene where the image and the slicer are rendered.
+ */
 public class Scene3D {
 
     private final SubScene subScene;
     private final Group root;
 
+    /**
+     * Create a new 3D scene.
+     *
+     * @param sceneWidth  the width the scene should have
+     * @param sceneHeight  the height the scene should have
+     * @param imageServer  the image to represent
+     * @param translationSliderValue  the translation value of the slider
+     * @param xRotationSliderValue  the x-axis rotation value of the slider
+     * @param yRotationSliderValue  the y-axis rotation value of the slider
+     */
     public Scene3D(
             ObservableDoubleValue sceneWidth,
             ObservableDoubleValue sceneHeight,
@@ -37,15 +48,6 @@ public class Scene3D {
         root.getChildren().add(new AmbientLight());
         root.getTransforms().addAll(new SceneTransformations(subScene, 10).getTransforms());
 
-        root.getChildren().add(new Slicer(
-                imageServer.getWidth(),
-                imageServer.getHeight(),
-                imageServer.nZSlices(),
-                translationSliderValue,
-                xRotationSliderValue,
-                yRotationSliderValue
-        ));
-
         setUpObjects(
                 imageServer,
                 translationSliderValue,
@@ -55,6 +57,9 @@ public class Scene3D {
         setUpCamera(2 * Math.max(imageServer.getWidth(), imageServer.getHeight()));
     }
 
+    /**
+     * @return the JavaFX SubScene internally used by this 3D scene
+     */
     public SubScene getSubScene() {
         return subScene;
     }
@@ -66,8 +71,8 @@ public class Scene3D {
             ObservableDoubleValue yRotationSliderValue
     ) {
         Rectangle slicer = new Slicer(
-                imageServer.getWidth(),
-                imageServer.getHeight(),
+                2 * imageServer.getWidth(),
+                2 * imageServer.getHeight(),
                 imageServer.nZSlices(),
                 translationSliderValue,
                 xRotationSliderValue,
@@ -75,7 +80,7 @@ public class Scene3D {
         );
         root.getChildren().add(slicer);
 
-        root.getChildren().add(new Volume(slicer, imageServer));
+        root.getChildren().add(new Volume(imageServer, slicer));
     }
 
     private void setUpCamera(int distanceFromOrigin) {

@@ -1,22 +1,20 @@
 package qupath.ext.viewer;
 
 import qupath.lib.images.servers.AbstractImageServer;
-import qupath.lib.images.servers.ImageChannel;
-import qupath.lib.images.servers.ImageServer;
 import qupath.lib.images.servers.ImageServerBuilder;
 import qupath.lib.images.servers.ImageServerMetadata;
 import qupath.lib.images.servers.PixelType;
-import qupath.lib.images.servers.TileRequest;
-import qupath.lib.images.servers.TileRequestManager;
 import qupath.lib.regions.RegionRequest;
 
-import java.awt.*;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.net.URI;
 import java.util.Collection;
-import java.util.List;
 
+/**
+ * An image of size (x: 800, y: 600, z: 100, t:1) whose colour comes
+ * from the pixel position.
+ */
 public class SampleImageServer extends AbstractImageServer<BufferedImage> {
 
     public SampleImageServer(Class<BufferedImage> imageClass) {

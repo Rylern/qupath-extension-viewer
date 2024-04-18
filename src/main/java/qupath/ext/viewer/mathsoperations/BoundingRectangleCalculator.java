@@ -4,10 +4,26 @@ import javafx.geometry.Point3D;
 
 import java.util.List;
 
+/**
+ * Compute the minimum area rectangle containing a set of 3D points using the
+ * algorithm in <a href="https://www.geometrictools.com/Documentation/MinimumAreaRectangle.pdf">this document</a>
+ * (listing 1).
+ */
 public class BoundingRectangleCalculator {
 
+    private BoundingRectangleCalculator() {
+        throw new AssertionError("This class is not instantiable.");
+    }
+
+    /**
+     * Compute the minimum area rectangle containing a set of points.
+     *
+     * @param points the points that must be contained in the rectangle
+     * @return the minimum area rectangle containing the points
+     */
     public static Rectangle getFromPoints(List<Point3D> points) {
-        //https://www.geometrictools.com/Documentation/MinimumAreaRectangle.pdf
+        // This function follows the method described in:
+        // https://www.geometrictools.com/Documentation/MinimumAreaRectangle.pdf
 
         double minArea = Double.POSITIVE_INFINITY;
         Rectangle boundingRectangle = null;

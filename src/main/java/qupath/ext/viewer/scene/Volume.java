@@ -12,12 +12,23 @@ import qupath.lib.images.servers.ImageServer;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
+/**
+ * Represent the image as a 3D volume.
+ * A rectangle can slice this volume, so that its inside
+ * can be seen.
+ */
 class Volume extends Group {
 
     private final ImageServer<BufferedImage> imageServer;
     private final javafx.scene.shape.Rectangle slicer;
 
-    public Volume(javafx.scene.shape.Rectangle slicer, ImageServer<BufferedImage> imageServer) {
+    /**
+     * Create the volume.
+     *
+     * @param imageServer  the image this volume should represent
+     * @param slicer  a rectangle that should slice this volume
+     */
+    public Volume(ImageServer<BufferedImage> imageServer, javafx.scene.shape.Rectangle slicer) {
         this.imageServer = imageServer;
         this.slicer = slicer;
 
@@ -31,11 +42,11 @@ class Volume extends Group {
 
     private List<MeshView> getMeshes() {
         Cube cube = new Cube(imageServer);
-        List<Face> faces = cube.getFacesInFrontOfRectangle(Rectangle.createFromJavaFXRectangle(slicer));
-        Point3D centroidOfVolume = Point3DExtension.centroid(faces.stream().map(Face::getPoints).flatMap(List::stream).toList());
+        List<Polygon> polygons = cube.getPartOfCubeInFrontOfRectangle(Rectangle.createFromJavaFXRectangle(slicer));
+        Point3D centroidOfVolume = Point3DExtension.centroid(polygons.stream().map(Polygon::getPoints).flatMap(List::stream).toList());
 
-        return faces.stream().map(
-                face -> face.computeMeshView(centroidOfVolume, imageServer)
+        return polygons.stream().map(
+                polygon -> polygon.computeMeshView(imageServer, centroidOfVolume)
         ).toList();
     }
 }

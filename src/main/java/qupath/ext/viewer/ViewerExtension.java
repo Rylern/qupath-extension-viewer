@@ -13,6 +13,10 @@ import qupath.lib.images.servers.ImageServer;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
+/**
+ * Add two actions in the Extensions menu to open the viewer with the currently opened image
+ * and with the sample image described in {@link SampleImageServer}.
+ */
 public class ViewerExtension implements QuPathExtension, GitHubProject {
 
 	private static final String EXTENSION_NAME = "Viewer extension";

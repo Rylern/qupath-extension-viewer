@@ -8,21 +8,28 @@ import qupath.lib.regions.RegionRequest;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
+/**
+ * Provide some useful functions on {@link ImageServer} objects.
+ */
 public class ImageServerExtension {
 
-    public static BufferedImage toRGB(BufferedImage image) {
-        if (image == null) {
-            return null;
-        } else if (image.getType() == BufferedImage.TYPE_INT_RGB) {
-            return image;
-        } else {
-            int[] rgb = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
-            BufferedImage rgbImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
-            rgbImage.setRGB(0, 0, image.getWidth(), image.getHeight(), rgb, 0, image.getWidth());
-            return rgbImage;
-        }
+    private ImageServerExtension() {
+        throw new AssertionError("This class is not instantiable.");
     }
 
+    /**
+     * Read a rectangular region of an ImageServer with all channels and at a particular time point.
+     * The region can be located anywhere in the (x, y, z) space.
+     * The width (height) of the returned image is the width (height) of the region + 1.
+     * This function is very slow because it reads the region pixel by pixel.
+     *
+     * @param server  the image to read
+     * @param area  the region of the image to read. It must be a rectangle, otherwise an unexpected result
+     *              is returned
+     * @param t  the time point to read
+     * @return the portion of image corresponding to the provided region of the provided image server
+     * @throws IOException when an exception occurs while reading the image
+     */
     public static BufferedImage readRegion(ImageServer<BufferedImage> server, Rectangle area, int t) throws IOException {
         int width = (int) area.getU().magnitude() + 1;
         int height = (int) area.getV().magnitude() + 1;
